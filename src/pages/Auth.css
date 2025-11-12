@@ -1,0 +1,110 @@
+/* Auth Container - Dùng chung cho Login, Register, ForgotPassword, ResetPassword */
+.auth-container {
+  max-width: 28rem;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
+}
+
+.auth-container h2 {
+  text-align: center;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  font-size: 1.75rem;
+}
+
+.auth-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-container input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-container input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 0.1875rem rgba(59, 130, 246, 0.1);
+}
+
+.auth-container input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auth-container button {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.auth-container button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.auth-container button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.auth-container button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.auth-container p {
+  text-align: center;
+  margin-top: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.auth-container a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.auth-container a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Message Styles */
+.auth-container .error {
+  padding: 0.75rem;
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-radius: 0.375rem;
+  border-left: 0.25rem solid #ef4444;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.auth-container .loading,
+.auth-container .success {
+  padding: 0.75rem;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-radius: 0.375rem;
+  border-left: 0.25rem solid #3b82f6;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}

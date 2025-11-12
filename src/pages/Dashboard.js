@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import RealTimeMap from "../components/RealTimeMap";
 import DashboardStats from "../components/DashboardStats";
 import AlertSystem from "../components/AlertSystem";
+import "./Dashboard.css";
 
 function Dashboard() {
   const [pets, setPets] = useState([]);
@@ -85,14 +86,11 @@ function Dashboard() {
 
     setDeleting(true);
     try {
-      // Gọi API xóa pet từ backend
       await deletePet(petId);
 
-      // Cập nhật danh sách pets
       const updatedPets = pets.filter((pet) => pet._id !== petId);
       setPets(updatedPets);
 
-      // Nếu pet đang được chọn bị xóa, chọn pet khác
       if (selectedPet && selectedPet._id === petId) {
         if (updatedPets.length > 0) {
           setSelectedPet(updatedPets[0]);
@@ -134,11 +132,11 @@ function Dashboard() {
   return (
     <>
       <Navbar />
-      <div className="container" style={{ maxWidth: "1200px" }}>
+      <div className="dashboard-container">
         <div className="dashboard-header">
           <h2>🐾 Dashboard Theo Dõi Pet</h2>
           <Link to="/add-pet">
-            <button style={{ marginBottom: 0 }}>+ Thêm Pet Mới</button>
+            <button>+ Thêm Pet Mới</button>
           </Link>
         </div>
 
@@ -153,7 +151,6 @@ function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Select Pet */}
             <div className="pet-selector">
               <label>Chọn Pet để theo dõi:</label>
               <select
@@ -173,10 +170,8 @@ function Dashboard() {
 
             {selectedPet && (
               <>
-                {/* Stats Cards */}
                 <DashboardStats petData={petData} selectedPet={selectedPet} />
 
-                {/* Map and Alerts Grid */}
                 <div className="grid-layout">
                   <div className="map-section">
                     <h3>🗺️ Bản Đồ Theo Dõi Thời Gian Thực</h3>
@@ -188,7 +183,6 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {/* Pet List */}
                 <div className="pet-list-section">
                   <div className="section-header">
                     <h3>📋 Danh Sách Pets Của Bạn</h3>
@@ -205,7 +199,6 @@ function Dashboard() {
                         <div
                           className="pet-info"
                           onClick={() => handlePetSelect(pet)}
-                          style={{ cursor: "pointer", flex: 1 }}
                         >
                           <h4>{pet.name}</h4>
                           <p>

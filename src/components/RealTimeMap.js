@@ -5,10 +5,11 @@ import {
   Marker,
   Popup,
   Polyline,
-  CircleMarker,
+  Circle,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "./RealTimeMap.css";
 
 // Fix cho marker icons - QUAN TRỌNG
 delete L.Icon.Default.prototype._getIconUrl;
@@ -64,11 +65,12 @@ const activityIcons = {
 export default function RealTimeMap({ petData, selectedPet }) {
   const [currentPosition, setCurrentPosition] = useState(null);
   const [path, setPath] = useState([]);
+  const [geofenceEnabled, setGeofenceEnabled] = useState(true);
+  const [geofenceRadius, setGeofenceRadius] = useState(100); // meters
   const mapRef = useRef();
 
-  console.log("Pet Data in Map:", petData); // Debug
+  console.log("Pet Data in Map:", petData);
 
-  // Cập nhật vị trí real-time
   useEffect(() => {
     if (
       petData &&
@@ -79,97 +81,141 @@ export default function RealTimeMap({ petData, selectedPet }) {
       const latestData = petData[0];
       const newPosition = [latestData.latitude, latestData.longitude];
 
-      console.log("New Position:", newPosition); // Debug
+      console.log("New Position:", newPosition);
 
       setCurrentPosition(newPosition);
-      setPath((prev) => [...prev.slice(-50), newPosition]); // Giữ 50 điểm gần nhất
+      setPath((prev) => [...prev.slice(-50), newPosition]);
 
-      // Tự động pan map đến vị trí mới
       if (mapRef.current) {
         mapRef.current.setView(newPosition, 16);
       }
     } else {
-      // Set default position if no data
-      const defaultPosition = [10.8231, 106.6297]; // HCM City
+      const defaultPosition = [10.8231, 106.6297];
       setCurrentPosition(defaultPosition);
       console.log("Using default position:", defaultPosition);
     }
   }, [petData]);
 
-  // THÊM CSS cho bản đồ
-  const mapStyle = {
-    height: "100%",
-    width: "100%",
-    minHeight: "400px",
+  const handleGeofenceToggle = () => {
+    setGeofenceEnabled(!geofenceEnabled);
+  };
+
+  const handleRadiusChange = (e) => {
+    setGeofenceRadius(parseInt(e.target.value));
   };
 
   if (!currentPosition) {
     return (
-      <div className="flex items-center justify-center h-96 bg-gray-100 rounded-lg">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Đang chờ dữ liệu vị trí...</p>
+      <div className="map-loading-container">
+        <div className="map-loading-content">
+          <div className="map-loading-spinner"></div>
+          <p className="map-loading-text">Đang chờ dữ liệu vị trí...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-96 rounded-lg overflow-hidden shadow-lg border-2 border-gray-300">
-      <MapContainer
-        center={currentPosition}
-        zoom={16}
-        style={mapStyle}
-        ref={mapRef}
-        scrollWheelZoom={true}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
+    <div style={{ position: "relative" }}>
+      {/* Geofence Controls */}
+      <div className="geofence-controls">
+        <div className="geofence-controls-title">
+          🛡️ Vùng An Toàn
+        </div>
+        
+        <div className="geofence-toggle">
+          <input
+            type="checkbox"
+            id="geofence-toggle"
+            className="geofence-checkbox"
+            checked={geofenceEnabled}
+            onChange={handleGeofenceToggle}
+          />
+          <label htmlFor="geofence-toggle" className="geofence-label">
+            Hiển thị Geofence
+          </label>
+        </div>
 
-        {/* Vẽ đường đi */}
-        {path.length > 1 && (
-          <Polyline positions={path} color="#3B82F6" weight={4} opacity={0.7} />
+        {geofenceEnabled && (
+          <div className="geofence-slider-container">
+            <label className="geofence-slider-label">
+              Bán kính: <span className="geofence-slider-value">{geofenceRadius}m</span>
+            </label>
+            <input
+              type="range"
+              min="50"
+              max="500"
+              step="50"
+              value={geofenceRadius}
+              onChange={handleRadiusChange}
+              className="geofence-slider"
+            />
+          </div>
         )}
+      </div>
 
-        {/* Marker hiện tại */}
-        {currentPosition && (
-          <Marker
-            position={currentPosition}
-            icon={
-              activityIcons[petData?.[0]?.activityType] || activityIcons.resting
-            }
-          >
-            <Popup>
-              <div className="text-sm">
-                <strong>{selectedPet?.name || "Pet"}</strong>
-                <br />
-                📍 {currentPosition[0].toFixed(6)},{" "}
-                {currentPosition[1].toFixed(6)}
-                <br />
-                🏃 {petData?.[0]?.activityType || "unknown"}
-                <br />⚡ {petData?.[0]?.batteryLevel || "N/A"}%
-                <br />
-                🕐{" "}
-                {petData?.[0]?.timestamp
-                  ? new Date(petData[0].timestamp).toLocaleTimeString()
-                  : "N/A"}
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {/* Vùng an toàn (radius 100m) */}
-        <CircleMarker
+      {/* Map Container */}
+      <div className="map-container">
+        <MapContainer
           center={currentPosition}
-          radius={100}
-          color="#10B981"
-          fillColor="#10B981"
-          fillOpacity={0.1}
-          weight={2}
-        />
-      </MapContainer>
+          zoom={16}
+          className="leaflet-map"
+          ref={mapRef}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+
+          {/* Vẽ đường đi */}
+          {path.length > 1 && (
+            <Polyline positions={path} color="#3B82F6" weight={4} opacity={0.7} />
+          )}
+
+          {/* Marker hiện tại */}
+          {currentPosition && (
+            <Marker
+              position={currentPosition}
+              icon={
+                activityIcons[petData?.[0]?.activityType] || activityIcons.resting
+              }
+            >
+              <Popup>
+                <div className="map-popup">
+                  <strong>{selectedPet?.name || "Pet"}</strong>
+                  <br />
+                  📍 {currentPosition[0].toFixed(6)},{" "}
+                  {currentPosition[1].toFixed(6)}
+                  <br />
+                  🏃 {petData?.[0]?.activityType || "unknown"}
+                  <br />⚡ {petData?.[0]?.batteryLevel || "N/A"}%
+                  <br />
+                  🕐{" "}
+                  {petData?.[0]?.timestamp
+                    ? new Date(petData[0].timestamp).toLocaleTimeString()
+                    : "N/A"}
+                </div>
+              </Popup>
+            </Marker>
+          )}
+
+          {/* Vùng an toàn động với animation */}
+          {geofenceEnabled && currentPosition && (
+            <Circle
+              center={currentPosition}
+              radius={geofenceRadius}
+              pathOptions={{
+                color: "#10B981",
+                fillColor: "#10B981",
+                fillOpacity: 0.15,
+                weight: 3,
+                className: "geofence-animated",
+              }}
+            />
+          )}
+        </MapContainer>
+      </div>
     </div>
   );
 }

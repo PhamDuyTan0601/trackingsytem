@@ -1,0 +1,84 @@
+/* Pet Detail Container */
+.pet-detail-container {
+  max-width: 50rem;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+
+.pet-detail-container h2 {
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  font-size: 1.875rem;
+}
+
+/* Pet Data Display */
+.pet-data {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.1);
+}
+
+.pet-data p {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border-bottom: 0.0625rem solid #e5e7eb;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pet-data p:last-child {
+  border-bottom: none;
+}
+
+.pet-data strong {
+  color: #374151;
+  font-weight: 600;
+  min-width: 9.375rem;
+}
+
+.pet-data p > span:not(.activity) {
+  color: #1f2937;
+}
+
+/* Activity Badge */
+.activity {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.activity.resting {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.activity.walking {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.activity.running {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.activity.playing {
+  background-color: #fed7aa;
+  color: #92400e;
+}
+
+/* No Data Message */
+.pet-detail-container > p {
+  text-align: center;
+  color: #6b7280;
+  font-size: 1.125rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.1);
+}

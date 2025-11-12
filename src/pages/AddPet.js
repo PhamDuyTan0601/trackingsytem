@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { addPet } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import "./AddPet.css";
 
 function AddPet() {
   const [form, setForm] = useState({
@@ -32,7 +33,7 @@ function AddPet() {
   return (
     <>
       <Navbar />
-      <div className="container">
+      <div className="add-pet-container">
         <h2>Add New Pet</h2>
         <form onSubmit={handleSubmit}>
           <input

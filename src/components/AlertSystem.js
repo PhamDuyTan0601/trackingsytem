@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import "./AlertSystem.css";
 
 export default function AlertSystem({ petData, selectedPet }) {
   const [alerts, setAlerts] = useState([]);
@@ -23,7 +24,7 @@ export default function AlertSystem({ petData, selectedPet }) {
     }
 
     // Kiểm tra ra khỏi vùng an toàn (demo)
-    const safeZoneCenter = [10.8231, 106.6297]; // Tọa độ trung tâm
+    const safeZoneCenter = [10.8231, 106.6297];
     const distance = calculateDistance(
       safeZoneCenter[0],
       safeZoneCenter[1],
@@ -32,7 +33,6 @@ export default function AlertSystem({ petData, selectedPet }) {
     );
 
     if (distance > 0.5) {
-      // 500m
       newAlerts.push({
         type: "location",
         message: "Pet ra khỏi vùng an toàn!",
@@ -72,36 +72,32 @@ export default function AlertSystem({ petData, selectedPet }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">🚨 Thông báo</h2>
+    <div className="alert-system-container">
+      <h2 className="alert-system-title"> Thông báo</h2>
 
       {alerts.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <div className="text-4xl mb-2">✅</div>
+        <div className="alert-empty-state">
+          <div className="alert-empty-icon">✅</div>
           <p>Không có cảnh báo nào</p>
-          <p className="text-sm">Mọi thứ đều ổn định</p>
+          <p className="alert-empty-subtitle">Mọi thứ đều ổn định</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="alert-list">
           {alerts.map((alert) => (
             <div
               key={alert.id}
-              className={`p-4 rounded-lg border-l-4 ${
-                alert.level === "danger"
-                  ? "bg-red-50 border-red-500"
-                  : "bg-yellow-50 border-yellow-500"
-              }`}
+              className={`alert-item ${alert.level}`}
             >
-              <div className="flex justify-between items-center">
+              <div className="alert-content">
                 <div>
-                  <p className="font-semibold">{alert.message}</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="alert-message">{alert.message}</p>
+                  <p className="alert-time">
                     {new Date().toLocaleTimeString()}
                   </p>
                 </div>
                 <button
                   onClick={() => removeAlert(alert.id)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="alert-close-btn"
                 >
                   ✕
                 </button>

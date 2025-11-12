@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getLatestPetData } from "../api/api";
 import Navbar from "../components/Navbar";
+import "./PetDetail.css";
 
 function PetDetail() {
   const { id } = useParams();
@@ -29,7 +30,7 @@ function PetDetail() {
   return (
     <>
       <Navbar />
-      <div className="container">
+      <div className="pet-detail-container">
         <h2>Pet Latest Data</h2>
 
         {loading && <div className="loading">Loading...</div>}
@@ -38,13 +39,16 @@ function PetDetail() {
         {data ? (
           <div className="pet-data">
             <p>
-              <strong>Latitude:</strong> {data.latitude}
+              <strong>Latitude:</strong> 
+              <span>{data.latitude}</span>
             </p>
             <p>
-              <strong>Longitude:</strong> {data.longitude}
+              <strong>Longitude:</strong>
+              <span>{data.longitude}</span>
             </p>
             <p>
-              <strong>Speed:</strong> {data.speed} m/s
+              <strong>Speed:</strong>
+              <span>{data.speed} m/s</span>
             </p>
             <p>
               <strong>Activity:</strong>
@@ -53,11 +57,12 @@ function PetDetail() {
               </span>
             </p>
             <p>
-              <strong>Battery:</strong> {data.batteryLevel}%
+              <strong>Battery:</strong>
+              <span>{data.batteryLevel}%</span>
             </p>
             <p>
-              <strong>Last Updated:</strong>{" "}
-              {new Date(data.timestamp).toLocaleString()}
+              <strong>Last Updated:</strong>
+              <span>{new Date(data.timestamp).toLocaleString()}</span>
             </p>
           </div>
         ) : (

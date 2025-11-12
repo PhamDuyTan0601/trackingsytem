@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { logoutUser } from "../api/api";
+import "./Navbar.css";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -13,69 +14,26 @@ function Navbar() {
   };
 
   return (
-    <nav
-      style={{
-        backgroundColor: "#2b6cb0",
-        color: "white",
-        padding: "10px 20px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <div>
-        <Link
-          to="/dashboard"
-          style={{
-            color: "white",
-            textDecoration: "none",
-            marginRight: "20px",
-            fontWeight: "bold",
-          }}
-        >
-          🏠 Dashboard
+    <nav className="navbar">
+      <div className="navbar-links">
+        <Link to="/dashboard" className="navbar-link">
+           Dashboard
         </Link>
-        <Link
-          to="/add-pet"
-          style={{
-            color: "white",
-            textDecoration: "none",
-            marginRight: "20px",
-            fontWeight: "bold",
-          }}
-        >
-          ➕ Add Pet
+        <Link to="/add-pet" className="navbar-link">
+           Add Pet
         </Link>
-        <Link
-          to="/devices"
-          style={{
-            color: "white",
-            textDecoration: "none",
-            fontWeight: "bold",
-          }}
-        >
-          📱 Devices
+        <Link to="/devices" className="navbar-link">
+           Devices
         </Link>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+      <div className="navbar-right">
         {user.name && (
-          <span style={{ fontSize: "14px" }}>👋 Hello, {user.name}</span>
+          <span className="navbar-greeting">👋 Hello, {user.name}</span>
         )}
         {token && (
-          <button
-            onClick={handleLogout}
-            style={{
-              background: "#e53e3e",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              color: "white",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            🚪 Logout
+          <button onClick={handleLogout} className="navbar-logout-btn">
+             Logout
           </button>
         )}
       </div>

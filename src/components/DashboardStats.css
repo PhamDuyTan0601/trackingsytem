@@ -1,0 +1,63 @@
+.stat-card {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+}
+
+.stat-card.purple-border {
+  border-left-color: #9333ea;
+  padding-bottom: 40px;
+  margin-bottom: 20px;
+}
+
+.stat-card-content {
+  display: flex;
+  align-items: center;
+}
+
+.stat-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.stat-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-top: 0.5rem;
+}
+
+.activity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.activity-badge.resting {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.activity-badge.walking {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.activity-badge.running {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.activity-badge.unknown {
+  background-color: #f3f4f6;
+  color: #1f2937;
+}
+
+.activity-badge-icon {
+  margin-right: 0.5rem;
+}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getPetsByUser, registerDevice, getMyDevices } from "../api/api";
 import Navbar from "../components/Navbar";
+import "./DeviceManagement.css";
 
 function DeviceManagement() {
   const [pets, setPets] = useState([]);
@@ -45,7 +46,7 @@ function DeviceManagement() {
       alert("✅ Đăng ký device thành công!");
       setDeviceId("");
       setSelectedPet("");
-      fetchDevices(); // Refresh list
+      fetchDevices();
     } catch (error) {
       alert(
         "❌ Lỗi đăng ký device: " +
@@ -65,37 +66,31 @@ function DeviceManagement() {
   return (
     <>
       <Navbar />
-      <div className="container">
+      <div className="device-container">
         <h2>📱 Quản lý Devices</h2>
 
-        {/* Form đăng ký device */}
-        <div className="card" style={{ marginBottom: "30px", padding: "20px" }}>
+        <div className="card">
           <h3>➕ Đăng ký Device Mới</h3>
-          <form onSubmit={handleRegister}>
-            <div style={{ marginBottom: "15px" }}>
+          <form onSubmit={handleRegister} className="device-form">
+            <div className="form-group">
               <label>Device ID:</label>
-              <div style={{ display: "flex", gap: "10px" }}>
+              <div className="input-with-button">
                 <input
                   placeholder="Nhập Device ID"
                   value={deviceId}
                   onChange={(e) => setDeviceId(e.target.value)}
-                  style={{ flex: 1 }}
                   required
                 />
-                <button type="button" onClick={generateDeviceId}>
-                  🎲 Tạo ID
-                </button>
               </div>
-              <small>Device ID từ ESP32 hoặc tạo mới</small>
+              <small>Device ID từ ESP32</small>
             </div>
 
-            <div style={{ marginBottom: "15px" }}>
+            <div className="form-group">
               <label>Chọn Pet:</label>
               <select
                 value={selectedPet}
                 onChange={(e) => setSelectedPet(e.target.value)}
                 required
-                style={{ width: "100%", padding: "8px" }}
               >
                 <option value="">-- Chọn pet --</option>
                 {pets.map((pet) => (
@@ -107,12 +102,11 @@ function DeviceManagement() {
             </div>
 
             <button type="submit" disabled={loading}>
-              {loading ? "Đang đăng ký..." : "📝 Đăng ký Device"}
+              {loading ? "Đang đăng ký..." : "🔐 Đăng ký Device"}
             </button>
           </form>
         </div>
 
-        {/* Danh sách devices */}
         <div className="card">
           <h3>📋 Devices Đã Đăng Ký</h3>
           {devices.length === 0 ? (
@@ -150,11 +144,7 @@ function DeviceManagement() {
           )}
         </div>
 
-        {/* Hướng dẫn sử dụng */}
-        <div
-          className="card"
-          style={{ marginTop: "30px", background: "#f0f9ff" }}
-        >
+        <div className="card instructions-card">
           <h3>📖 Hướng Dẫn Sử Dụng</h3>
           <ol>
             <li>
@@ -171,18 +161,9 @@ function DeviceManagement() {
               <strong>Cấu hình ESP32</strong> - Dùng Device ID trong code ESP32
             </li>
           </ol>
-          <div
-            style={{
-              background: "#e2e8f0",
-              padding: "10px",
-              borderRadius: "5px",
-              marginTop: "10px",
-            }}
-          >
+          <div className="code-block">
             <strong>Code ESP32 mẫu:</strong>
-            <code style={{ display: "block", marginTop: "5px" }}>
-              String deviceId = "{deviceId || "ESP32_ABC123XYZ"}";
-            </code>
+            <code>String deviceId = "{deviceId || "ESP32_ABC123XYZ"}";</code>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { loginUser } from "../api/api";
 import { useNavigate, Link } from "react-router-dom";
+import "./Auth.css";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -53,7 +54,6 @@ function Login() {
       </form>
       <p>
         <Link to="/register">Create new account</Link>
-        {/* ĐÃ BỎ link forgot password */}
       </p>
     </div>
   );
