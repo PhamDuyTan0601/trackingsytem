@@ -48,18 +48,15 @@ function DeviceManagement() {
       setSelectedPet("");
       fetchDevices();
     } catch (error) {
-      alert(
-        "❌ Lỗi đăng ký device: " +
-          (error.response?.data?.message || "Unknown error")
-      );
+      alert("❌ Lỗi đăng ký device: " + (error.response?.data?.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
   };
 
   const generateDeviceId = () => {
-    const newId =
-      "ESP32_" + Math.random().toString(36).substr(2, 9).toUpperCase();
+    // ✅ Dùng generateDeviceId nên không còn no-unused-vars
+    const newId = "ESP32_" + Math.random().toString(36).substr(2, 9).toUpperCase();
     setDeviceId(newId);
   };
 
@@ -81,6 +78,7 @@ function DeviceManagement() {
                   onChange={(e) => setDeviceId(e.target.value)}
                   required
                 />
+                <button type="button" onClick={generateDeviceId}>Tạo ID</button>
               </div>
               <small>Device ID từ ESP32</small>
             </div>
@@ -118,23 +116,13 @@ function DeviceManagement() {
                   <div className="device-info">
                     <strong>Device ID: {device.deviceId}</strong>
                     <div>
-                      <span className="pet-badge">
-                        Pet: {device.petId?.name}
-                      </span>
-                      <span className="species-badge">
-                        {device.petId?.species}
-                      </span>
+                      <span className="pet-badge">Pet: {device.petId?.name}</span>
+                      <span className="species-badge">{device.petId?.species}</span>
                     </div>
-                    <small>
-                      Cập nhật: {new Date(device.lastSeen).toLocaleString()}
-                    </small>
+                    <small>Cập nhật: {new Date(device.lastSeen).toLocaleString()}</small>
                   </div>
                   <div className="device-status">
-                    <span
-                      className={`status ${
-                        device.isActive ? "active" : "inactive"
-                      }`}
-                    >
+                    <span className={`status ${device.isActive ? "active" : "inactive"}`}>
                       {device.isActive ? "🟢 Active" : "🔴 Inactive"}
                     </span>
                   </div>
@@ -147,19 +135,10 @@ function DeviceManagement() {
         <div className="card instructions-card">
           <h3>📖 Hướng Dẫn Sử Dụng</h3>
           <ol>
-            <li>
-              <strong>Tạo Device ID</strong> - Nhấn nút "Tạo ID" hoặc nhập ID từ
-              ESP32
-            </li>
-            <li>
-              <strong>Chọn Pet</strong> - Chọn pet mà device sẽ theo dõi
-            </li>
-            <li>
-              <strong>Đăng ký</strong> - Nhấn "Đăng ký Device"
-            </li>
-            <li>
-              <strong>Cấu hình ESP32</strong> - Dùng Device ID trong code ESP32
-            </li>
+            <li><strong>Tạo Device ID</strong> - Nhấn nút "Tạo ID" hoặc nhập ID từ ESP32</li>
+            <li><strong>Chọn Pet</strong> - Chọn pet mà device sẽ theo dõi</li>
+            <li><strong>Đăng ký</strong> - Nhấn "Đăng ký Device"</li>
+            <li><strong>Cấu hình ESP32</strong> - Dùng Device ID trong code ESP32</li>
           </ol>
           <div className="code-block">
             <strong>Code ESP32 mẫu:</strong>
