@@ -1,37 +1,39 @@
 import React, { useState } from "react";
 import { registerUser } from "../api/api";
 import { useNavigate, Link } from "react-router-dom";
+import { toast } from "react-toastify"; // dùng toast
+import "./Auth.css";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState(""); // thêm phone
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState(""); // ✅ Mới
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
-    // Validate phone
-    const phoneRegex = /^[0-9]{10,15}$/;
-    if (!phoneRegex.test(phone)) {
-      alert("❌ Số điện thoại không hợp lệ!");
+    // Validate cơ bản
+    if (!name || !email || !password || !phone) {
+      toast.error("Vui lòng điền đầy đủ thông tin!");
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-
     try {
-      const res = await registerUser({ name, email, password, phone });
+      const res = await registerUser({ name, email, phone, password });
       if (res.data.success) {
-        alert("✅ Account created successfully!");
+        toast.success("✅ Tạo tài khoản thành công!");
         navigate("/login");
       } else {
-        alert(res.data.message);
+        toast.error(res.data.message || "Đăng ký thất bại!");
       }
     } catch (err) {
-      alert("❌ Registration failed. Please try again.");
+      toast.error("❌ Đăng ký thất bại. Vui lòng thử lại.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -39,10 +41,10 @@ function Register() {
 
   return (
     <div className="auth-container">
-      <h2>Create Account</h2>
+      <h2>Tạo tài khoản</h2>
       <form onSubmit={handleSubmit}>
         <input
-          placeholder="Full Name"
+          placeholder="Họ và tên"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -57,27 +59,27 @@ function Register() {
           disabled={loading}
         />
         <input
-          placeholder="Password (min 6 characters)"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          disabled={loading}
-        />
-        <input
-          placeholder="Phone Number"
+          placeholder="Số điện thoại"
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           required
           disabled={loading}
         />
+        <input
+          placeholder="Mật khẩu (ít nhất 6 ký tự)"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          disabled={loading}
+        />
         <button type="submit" disabled={loading}>
-          {loading ? "Creating Account..." : "Register"}
+          {loading ? "Đang tạo tài khoản..." : "Register"}
         </button>
       </form>
       <p>
-        <Link to="/login">Already have an account? Login</Link>
+        <Link to="/login">Đã có tài khoản? Đăng nhập</Link>
       </p>
     </div>
   );
