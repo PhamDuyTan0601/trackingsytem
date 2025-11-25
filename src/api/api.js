@@ -82,7 +82,7 @@ export const getAllPetData = async (petId) =>
   axios.get(`${API_URL}/api/petData/pet/${petId}`, getAuthHeader());
 
 // ===============================
-// 📱 DEVICE APIs
+// 📱 DEVICE APIs - THÊM ENDPOINT MỚI
 // ===============================
 
 // Đăng ký device với pet
@@ -100,6 +100,10 @@ export const getMyDevices = async () =>
 // Lấy thông tin pet từ deviceId (cho ESP32)
 export const getPetByDevice = async (deviceId) =>
   axios.get(`${API_URL}/api/devices/pet/${deviceId}`);
+
+// 🆕 ESP32 lấy cấu hình (petId, phoneNumber, petName, ownerName)
+export const getDeviceConfig = async (deviceId) =>
+  axios.get(`${API_URL}/api/devices/config/${deviceId}`);
 
 // ===============================
 // 🧩 AXIOS INTERCEPTOR - CẢI THIỆN XỬ LÝ LỖI
