@@ -17,23 +17,28 @@ function Navbar() {
     <nav className="navbar">
       <div className="navbar-links">
         <Link to="/dashboard" className="navbar-link">
-           Dashboard
+          Dashboard
         </Link>
         <Link to="/add-pet" className="navbar-link">
-           Add Pet
+          Add Pet
         </Link>
         <Link to="/devices" className="navbar-link">
-           Devices
+          Devices
         </Link>
       </div>
 
       <div className="navbar-right">
         {user.name && (
-          <span className="navbar-greeting">👋 Hello, {user.name}</span>
+          <div className="user-info">
+            <span className="navbar-greeting">👋 Xin chào, {user.name}</span>
+            {user.phone && (
+              <span className="navbar-phone">📞 {user.phone}</span>
+            )}
+          </div>
         )}
         {token && (
           <button onClick={handleLogout} className="navbar-logout-btn">
-             Logout
+            Đăng xuất
           </button>
         )}
       </div>

@@ -14,7 +14,7 @@ const API_URL =
 export const registerUser = (userData) =>
   axios.post(`${API_URL}/api/users/register`, userData);
 
-// Đăng nhập
+// Đăng nhập - hỗ trợ cả email và số điện thoại
 export const loginUser = async (userData) => {
   const response = await axios.post(`${API_URL}/api/users/login`, userData);
 

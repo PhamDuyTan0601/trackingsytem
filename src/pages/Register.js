@@ -1,16 +1,22 @@
 import React, { useState } from "react";
 import { registerUser } from "../api/api";
 import { useNavigate, Link } from "react-router-dom";
-import { toast } from "react-toastify"; // dùng toast
+import { toast } from "react-toastify";
 import "./Auth.css";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState(""); // thêm phone
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const validatePhone = (phone) => {
+    const phoneRegex =
+      /^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-9]|9[0-9])[0-9]{7}$/;
+    return phoneRegex.test(phone);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,6 +25,23 @@ function Register() {
     // Validate cơ bản
     if (!name || !email || !password || !phone) {
       toast.error("Vui lòng điền đầy đủ thông tin!");
+      setLoading(false);
+      return;
+    }
+
+    // Validate số điện thoại
+    if (!validatePhone(phone)) {
+      toast.error(
+        "Số điện thoại không hợp lệ! Vui lòng nhập số điện thoại Việt Nam."
+      );
+      setLoading(false);
+      return;
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Email không hợp lệ!");
       setLoading(false);
       return;
     }
@@ -32,7 +55,9 @@ function Register() {
         toast.error(res.data.message || "Đăng ký thất bại!");
       }
     } catch (err) {
-      toast.error("❌ Đăng ký thất bại. Vui lòng thử lại.");
+      const errorMessage =
+        err.response?.data?.message || "❌ Đăng ký thất bại. Vui lòng thử lại.";
+      toast.error(errorMessage);
       console.error(err);
     } finally {
       setLoading(false);
@@ -59,7 +84,7 @@ function Register() {
           disabled={loading}
         />
         <input
-          placeholder="Số điện thoại"
+          placeholder="Số điện thoại (VD: 0912345678 hoặc +84912345678)"
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -73,9 +98,10 @@ function Register() {
           onChange={(e) => setPassword(e.target.value)}
           required
           disabled={loading}
+          minLength="6"
         />
         <button type="submit" disabled={loading}>
-          {loading ? "Đang tạo tài khoản..." : "Register"}
+          {loading ? "Đang tạo tài khoản..." : "Đăng ký"}
         </button>
       </form>
       <p>

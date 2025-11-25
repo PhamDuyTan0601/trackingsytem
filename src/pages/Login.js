@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { loginUser } from "../api/api";
 import { useNavigate, Link } from "react-router-dom";
-import { toast } from "react-toastify"; // ✅ Dùng toast thay alert
+import { toast } from "react-toastify";
 import "./Auth.css";
 
 function Login() {
-  const [emailOrPhone, setEmailOrPhone] = useState(""); // Cho phép login bằng email hoặc phone
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -21,7 +21,10 @@ function Login() {
     }
 
     try {
-      const res = await loginUser({ email: emailOrPhone, password }); // backend vẫn nhận `email`
+      // Gửi cả email và số điện thoại dưới dạng "email" field
+      // Backend sẽ tự động detect là email hay số điện thoại
+      const res = await loginUser({ email: emailOrPhone, password });
+
       if (res.data.success) {
         toast.success("✅ Đăng nhập thành công!");
         navigate("/dashboard");
@@ -29,7 +32,10 @@ function Login() {
         toast.error(res.data.message || "Đăng nhập thất bại!");
       }
     } catch (err) {
-      toast.error("❌ Đăng nhập thất bại. Kiểm tra lại thông tin!");
+      const errorMessage =
+        err.response?.data?.message ||
+        "❌ Đăng nhập thất bại. Kiểm tra lại thông tin!";
+      toast.error(errorMessage);
       console.error(err);
     } finally {
       setLoading(false);
@@ -38,7 +44,7 @@ function Login() {
 
   return (
     <div className="auth-container">
-      <h2>Login to Pet Tracker</h2>
+      <h2>Đăng nhập Pet Tracker</h2>
       <form onSubmit={handleSubmit}>
         <input
           placeholder="Email hoặc Số điện thoại"
@@ -57,7 +63,7 @@ function Login() {
           disabled={loading}
         />
         <button type="submit" disabled={loading}>
-          {loading ? "Đang đăng nhập..." : "Login"}
+          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
         </button>
       </form>
       <p>
