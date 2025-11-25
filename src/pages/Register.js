@@ -1,21 +1,29 @@
 import React, { useState } from "react";
 import { registerUser } from "../api/api";
 import { useNavigate, Link } from "react-router-dom";
-import "./Auth.css";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState(""); // ✅ Mới
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate phone
+    const phoneRegex = /^[0-9]{10,15}$/;
+    if (!phoneRegex.test(phone)) {
+      alert("❌ Số điện thoại không hợp lệ!");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await registerUser({ name, email, password });
+      const res = await registerUser({ name, email, password, phone });
       if (res.data.success) {
         alert("✅ Account created successfully!");
         navigate("/login");
@@ -53,6 +61,14 @@ function Register() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
+          disabled={loading}
+        />
+        <input
+          placeholder="Phone Number"
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
           required
           disabled={loading}
         />
