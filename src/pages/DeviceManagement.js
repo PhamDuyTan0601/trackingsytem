@@ -8,6 +8,8 @@ function DeviceManagement() {
   const [devices, setDevices] = useState([]);
   const [selectedPet, setSelectedPet] = useState("");
   const [deviceId, setDeviceId] = useState("");
+  const [safeZoneAddress, setSafeZoneAddress] = useState("");
+  const [safeZoneRadius, setSafeZoneRadius] = useState(100); // meters
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -46,18 +48,17 @@ function DeviceManagement() {
       alert("✅ Đăng ký device thành công!");
       setDeviceId("");
       setSelectedPet("");
+      setSafeZoneAddress("");
+      setSafeZoneRadius(100);
       fetchDevices();
     } catch (error) {
-      alert("❌ Lỗi đăng ký device: " + (error.response?.data?.message || "Unknown error"));
+      alert(
+        "❌ Lỗi đăng ký device: " +
+          (error.response?.data?.message || "Unknown error")
+      );
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateDeviceId = () => {
-    // ✅ Dùng generateDeviceId nên không còn no-unused-vars
-    const newId = "ESP32_" + Math.random().toString(36).substr(2, 9).toUpperCase();
-    setDeviceId(newId);
   };
 
   return (
@@ -71,16 +72,13 @@ function DeviceManagement() {
           <form onSubmit={handleRegister} className="device-form">
             <div className="form-group">
               <label>Device ID:</label>
-              <div className="input-with-button">
-                <input
-                  placeholder="Nhập Device ID"
-                  value={deviceId}
-                  onChange={(e) => setDeviceId(e.target.value)}
-                  required
-                />
-                <button type="button" onClick={generateDeviceId}>Tạo ID</button>
-              </div>
-              <small>Device ID từ ESP32</small>
+              <input
+                placeholder="Nhập Device ID từ ESP32 (VD: ESP32_ABC123XYZ)"
+                value={deviceId}
+                onChange={(e) => setDeviceId(e.target.value)}
+                required
+              />
+              <small>Device ID từ ESP32 (thường bắt đầu bằng ESP32_)</small>
             </div>
 
             <div className="form-group">
@@ -97,6 +95,33 @@ function DeviceManagement() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-group">
+              <label>Địa chỉ Vùng An Toàn (Tùy chọn):</label>
+              <input
+                placeholder="Nhập địa chỉ vùng an toàn cho pet"
+                value={safeZoneAddress}
+                onChange={(e) => setSafeZoneAddress(e.target.value)}
+              />
+              <small>Ví dụ: 123 Đường ABC, Quận 1, TP.HCM</small>
+            </div>
+
+            <div className="form-group">
+              <label>Bán kính Vùng An Toàn (mét):</label>
+              <select
+                value={safeZoneRadius}
+                onChange={(e) => setSafeZoneRadius(parseInt(e.target.value))}
+              >
+                <option value={50}>50 mét</option>
+                <option value={100}>100 mét</option>
+                <option value={200}>200 mét</option>
+                <option value={500}>500 mét</option>
+                <option value={1000}>1000 mét</option>
+              </select>
+              <small>
+                Khoảng cách tối đa pet có thể di chuyển khỏi vùng an toàn
+              </small>
             </div>
 
             <button type="submit" disabled={loading}>
@@ -116,13 +141,23 @@ function DeviceManagement() {
                   <div className="device-info">
                     <strong>Device ID: {device.deviceId}</strong>
                     <div>
-                      <span className="pet-badge">Pet: {device.petId?.name}</span>
-                      <span className="species-badge">{device.petId?.species}</span>
+                      <span className="pet-badge">
+                        Pet: {device.petId?.name}
+                      </span>
+                      <span className="species-badge">
+                        {device.petId?.species}
+                      </span>
                     </div>
-                    <small>Cập nhật: {new Date(device.lastSeen).toLocaleString()}</small>
+                    <small>
+                      Cập nhật: {new Date(device.lastSeen).toLocaleString()}
+                    </small>
                   </div>
                   <div className="device-status">
-                    <span className={`status ${device.isActive ? "active" : "inactive"}`}>
+                    <span
+                      className={`status ${
+                        device.isActive ? "active" : "inactive"
+                      }`}
+                    >
                       {device.isActive ? "🟢 Active" : "🔴 Inactive"}
                     </span>
                   </div>
@@ -135,10 +170,23 @@ function DeviceManagement() {
         <div className="card instructions-card">
           <h3>📖 Hướng Dẫn Sử Dụng</h3>
           <ol>
-            <li><strong>Tạo Device ID</strong> - Nhấn nút "Tạo ID" hoặc nhập ID từ ESP32</li>
-            <li><strong>Chọn Pet</strong> - Chọn pet mà device sẽ theo dõi</li>
-            <li><strong>Đăng ký</strong> - Nhấn "Đăng ký Device"</li>
-            <li><strong>Cấu hình ESP32</strong> - Dùng Device ID trong code ESP32</li>
+            <li>
+              <strong>Nhập Device ID</strong> - Nhập ID từ ESP32 (thường bắt đầu
+              bằng ESP32_)
+            </li>
+            <li>
+              <strong>Chọn Pet</strong> - Chọn pet mà device sẽ theo dõi
+            </li>
+            <li>
+              <strong>Thiết lập Vùng An Toàn</strong> - Nhập địa chỉ và bán kính
+              vùng an toàn (tùy chọn)
+            </li>
+            <li>
+              <strong>Đăng ký</strong> - Nhấn "Đăng ký Device"
+            </li>
+            <li>
+              <strong>Cấu hình ESP32</strong> - Dùng Device ID trong code ESP32
+            </li>
           </ol>
           <div className="code-block">
             <strong>Code ESP32 mẫu:</strong>

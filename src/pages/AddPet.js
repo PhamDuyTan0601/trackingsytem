@@ -10,6 +10,8 @@ function AddPet() {
     species: "",
     breed: "",
     age: "",
+    safeZoneAddress: "",
+    safeZoneRadius: 100,
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -67,6 +69,29 @@ function AddPet() {
             required
             disabled={loading}
           />
+
+          <input
+            placeholder="Địa chỉ vùng an toàn (tùy chọn)"
+            value={form.safeZoneAddress}
+            onChange={(e) =>
+              setForm({ ...form, safeZoneAddress: e.target.value })
+            }
+            disabled={loading}
+          />
+
+          <select
+            value={form.safeZoneRadius}
+            onChange={(e) =>
+              setForm({ ...form, safeZoneRadius: parseInt(e.target.value) })
+            }
+            disabled={loading}
+          >
+            <option value={50}>Bán kính an toàn: 50 mét</option>
+            <option value={100}>Bán kính an toàn: 100 mét</option>
+            <option value={200}>Bán kính an toàn: 200 mét</option>
+            <option value={500}>Bán kính an toàn: 500 mét</option>
+          </select>
+
           <button type="submit" disabled={loading}>
             {loading ? "Adding Pet..." : "Add Pet"}
           </button>
