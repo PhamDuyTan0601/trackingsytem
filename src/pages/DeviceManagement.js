@@ -10,26 +10,47 @@ function DeviceManagement() {
   const [deviceId, setDeviceId] = useState("");
   const [safeZoneAddress, setSafeZoneAddress] = useState("");
   const [safeZoneRadius, setSafeZoneRadius] = useState(100);
-  const [addressSuggestions, setAddressSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
-  const addressInputRef = useRef(null);
+  const autocompleteRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     fetchPets();
     fetchDevices();
 
-    // Load Google Maps Places API
-    loadGoogleMapsAPI();
-  }, []);
-
-  const loadGoogleMapsAPI = () => {
+    // Load Google Maps API
     if (!window.google) {
       const script = document.createElement("script");
       script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places`;
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
+
+      script.onload = initAutocomplete;
+    } else {
+      initAutocomplete();
+    }
+  }, []);
+
+  const initAutocomplete = () => {
+    if (window.google && inputRef.current) {
+      autocompleteRef.current = new window.google.maps.places.Autocomplete(
+        inputRef.current,
+        {
+          types: ["address"],
+          componentRestrictions: { country: "vn" },
+          fields: ["formatted_address", "geometry", "name"],
+        }
+      );
+
+      autocompleteRef.current.addListener("place_changed", onPlaceChanged);
+    }
+  };
+
+  const onPlaceChanged = () => {
+    const place = autocompleteRef.current.getPlace();
+    if (place && place.formatted_address) {
+      setSafeZoneAddress(place.formatted_address);
     }
   };
 
@@ -49,44 +70,6 @@ function DeviceManagement() {
     } catch (error) {
       console.error("Error fetching devices:", error);
     }
-  };
-
-  const handleAddressInput = (address) => {
-    setSafeZoneAddress(address);
-
-    if (address.length > 2 && window.google) {
-      getAddressSuggestions(address);
-    } else {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
-
-  const getAddressSuggestions = (input) => {
-    if (!window.google || !window.google.maps) return;
-
-    const service = new window.google.maps.places.AutocompleteService();
-    service.getPlacePredictions(
-      { input, componentRestrictions: { country: "vn" } },
-      (predictions, status) => {
-        if (
-          status === window.google.maps.places.PlacesServiceStatus.OK &&
-          predictions
-        ) {
-          setAddressSuggestions(predictions);
-          setShowSuggestions(true);
-        } else {
-          setAddressSuggestions([]);
-          setShowSuggestions(false);
-        }
-      }
-    );
-  };
-
-  const selectAddress = (address) => {
-    setSafeZoneAddress(address.description);
-    setAddressSuggestions([]);
-    setShowSuggestions(false);
   };
 
   const handleRegister = async (e) => {
@@ -116,8 +99,6 @@ function DeviceManagement() {
       setSelectedPet("");
       setSafeZoneAddress("");
       setSafeZoneRadius(100);
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
       fetchDevices();
     } catch (error) {
       alert(
@@ -169,30 +150,15 @@ function DeviceManagement() {
               <label>📍 Địa chỉ Vùng An Toàn (Tùy chọn):</label>
               <div className="address-autocomplete">
                 <input
-                  ref={addressInputRef}
+                  ref={inputRef}
                   placeholder="Nhập địa chỉ vùng an toàn..."
                   value={safeZoneAddress}
-                  onChange={(e) => handleAddressInput(e.target.value)}
-                  onFocus={() =>
-                    safeZoneAddress.length > 2 && setShowSuggestions(true)
-                  }
+                  onChange={(e) => setSafeZoneAddress(e.target.value)}
+                  type="text"
                 />
-                {showSuggestions && addressSuggestions.length > 0 && (
-                  <div className="suggestions-dropdown">
-                    {addressSuggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="suggestion-item"
-                        onClick={() => selectAddress(suggestion)}
-                      >
-                        {suggestion.description}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
               <small>
-                Nhập địa chỉ nơi pet thường ở để thiết lập vùng an toàn
+                Nhập địa chỉ và chọn từ gợi ý để thiết lập vùng an toàn
               </small>
             </div>
 
@@ -272,8 +238,11 @@ function DeviceManagement() {
               <strong>Chọn Pet</strong> - Pet mà device sẽ theo dõi
             </li>
             <li>
-              <strong>Thiết lập Vùng An Toàn</strong> - Nhập địa chỉ và chọn bán
-              kính
+              <strong>Thiết lập Vùng An Toàn</strong> - Nhập địa chỉ và chọn từ
+              gợi ý
+            </li>
+            <li>
+              <strong>Chọn Bán Kính</strong> - Phạm vi an toàn cho pet
             </li>
             <li>
               <strong>Đăng ký</strong> - Hoàn tất thiết lập
