@@ -235,3 +235,147 @@
   font-size: 0.875rem;
   color: #475569;
 }
+/* Location Options */
+.location-options {
+  margin-top: 0.5rem;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+}
+
+.radio-label input[type="radio"] {
+  display: none;
+}
+
+.radio-custom {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 0.125rem solid #d1d5db;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.radio-custom::after {
+  content: "";
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.radio-label input[type="radio"]:checked + .radio-custom {
+  border-color: #3b82f6;
+}
+
+.radio-label input[type="radio"]:checked + .radio-custom::after {
+  opacity: 1;
+}
+
+.radio-label:hover .radio-custom {
+  border-color: #3b82f6;
+}
+
+/* Current Location Info */
+.current-location-info {
+  background: #f0f9ff;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  border-left: 0.25rem solid #3b82f6;
+}
+
+.current-location-info p {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.current-location-info small {
+  color: #6b7280;
+}
+
+/* Custom Address Input */
+.custom-address-input {
+  margin-top: 0.5rem;
+}
+
+.custom-address-input input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 0.0625rem solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.custom-address-input input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 0.1875rem rgba(59, 130, 246, 0.1);
+}
+
+/* Safe Zone Info in Device List */
+.safe-zone-info {
+  background: #f0f9ff;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  margin: 0.5rem 0;
+  border-left: 0.25rem solid #10b981;
+}
+
+.safe-zone-info p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+/* Scenario Examples */
+.scenario-examples {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 0.0625rem solid #e5e7eb;
+}
+
+.scenario-examples h4 {
+  color: #1f2937;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.scenario {
+  background: white;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  border: 0.0625rem solid #e5e7eb;
+}
+
+.scenario strong {
+  color: #1e40af;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.scenario p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-style: italic;
+}
