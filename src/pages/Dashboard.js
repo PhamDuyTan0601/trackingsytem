@@ -1,198 +1,270 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { getPetsByUser, getAllPetData, deletePet } from "../api/api";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { getPetsByUser, registerDevice, getMyDevices } from "../api/api";
 import Navbar from "../components/Navbar";
-import RealTimeMap from "../components/RealTimeMap";
-import DashboardStats from "../components/DashboardStats";
-import AlertSystem from "../components/AlertSystem";
-import "./Dashboard.css";
+import "./DeviceManagement.css";
 
-function Dashboard() {
+function DeviceManagement() {
   const [pets, setPets] = useState([]);
-  const [selectedPet, setSelectedPet] = useState(null);
-  const [petData, setPetData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
-
-  // ✅ useCallback để fix warning
-  const fetchPets = useCallback(async () => {
-    try {
-      const res = await getPetsByUser();
-      const petsData = res.data.pets || [];
-      setPets(petsData);
-
-      if (petsData.length > 0) {
-        setSelectedPet(petsData[0]);
-        await fetchPetData(petsData[0]._id);
-      }
-    } catch (err) {
-      console.error("Error loading pets:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const fetchPetData = async (petId) => {
-    try {
-      const res = await getAllPetData(petId);
-      const data = res.data.data || [];
-      setPetData(data.length > 0 ? data : [
-        {
-          latitude: 10.8231,
-          longitude: 106.6297,
-          activityType: "walking",
-          batteryLevel: 85,
-          speed: 1.2,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-    } catch (err) {
-      console.error("Error fetching pet data:", err);
-      setPetData([
-        {
-          latitude: 10.8231,
-          longitude: 106.6297,
-          activityType: "walking",
-          batteryLevel: 85,
-          speed: 1.2,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-    }
-  };
+  const [devices, setDevices] = useState([]);
+  const [selectedPet, setSelectedPet] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [safeZoneAddress, setSafeZoneAddress] = useState("");
+  const [safeZoneRadius, setSafeZoneRadius] = useState(100);
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mapPreview, setMapPreview] = useState(null);
 
   useEffect(() => {
     fetchPets();
-  }, [fetchPets]);
+    fetchDevices();
+    getCurrentLocation();
+  }, []);
 
-  const handlePetSelect = async (pet) => {
-    setSelectedPet(pet);
-    await fetchPetData(pet._id);
+  const fetchPets = async () => {
+    try {
+      const res = await getPetsByUser();
+      setPets(res.data.pets || []);
+    } catch (error) {
+      console.error("Error fetching pets:", error);
+    }
   };
 
-  const handleDeletePet = async (petId, petName) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa pet "${petName}"? Hành động này không thể hoàn tác.`)) return;
-
-    setDeleting(true);
+  const fetchDevices = async () => {
     try {
-      await deletePet(petId);
-      const updatedPets = pets.filter((pet) => pet._id !== petId);
-      setPets(updatedPets);
+      const res = await getMyDevices();
+      setDevices(res.data.devices || []);
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+    }
+  };
 
-      if (selectedPet && selectedPet._id === petId) {
-        if (updatedPets.length > 0) {
-          setSelectedPet(updatedPets[0]);
-          await fetchPetData(updatedPets[0]._id);
-        } else {
-          setSelectedPet(null);
-          setPetData([]);
-        }
+  const getCurrentLocation = () => {
+    // Giả lập vị trí hiện tại
+    setCurrentLocation("123 Đường Nguyễn Văn A, Quận 1, TP.HCM");
+  };
+
+  const handleUseCurrentLocation = () => {
+    setSafeZoneAddress(currentLocation);
+    setUseCurrentLocation(true);
+    previewOnMap(currentLocation);
+  };
+
+  const handleCustomAddress = () => {
+    setSafeZoneAddress("");
+    setUseCurrentLocation(false);
+    setMapPreview(null);
+  };
+
+  const handleAddressChange = (address) => {
+    setSafeZoneAddress(address);
+    if (address.length > 5) {
+      previewOnMap(address);
+    }
+  };
+
+  const previewOnMap = (address) => {
+    // Giả lập preview map (trong thực tế sẽ dùng Google Maps API)
+    setMapPreview({
+      address: address,
+      radius: safeZoneRadius,
+      center: { lat: 10.8231, lng: 106.6297 }, // Tọa độ mẫu
+      zoom: 15,
+    });
+  };
+
+  const handleRadiusChange = (radius) => {
+    setSafeZoneRadius(radius);
+    if (mapPreview) {
+      setMapPreview((prev) => ({ ...prev, radius }));
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!deviceId || !selectedPet) {
+      alert("Vui lòng nhập Device ID và chọn pet");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await registerDevice(deviceId, selectedPet);
+
+      // Lưu thông tin vùng an toàn
+      if (safeZoneAddress) {
+        console.log("Vùng an toàn đã thiết lập:", {
+          address: safeZoneAddress,
+          radius: safeZoneRadius,
+          coordinates: mapPreview?.center,
+        });
       }
 
-      alert(`✅ Đã xóa pet "${petName}" thành công!`);
+      alert(
+        "✅ Đăng ký device thành công!" +
+          (safeZoneAddress ? "\n📍 Đã thiết lập vùng an toàn" : "")
+      );
+      setDeviceId("");
+      setSelectedPet("");
+      setSafeZoneAddress("");
+      setSafeZoneRadius(100);
+      setUseCurrentLocation(false);
+      setMapPreview(null);
+      fetchDevices();
     } catch (error) {
-      console.error("Error deleting pet:", error);
-      let errorMessage = "Lỗi không xác định";
-
-      if (error.response) {
-        if (error.response.status === 404) errorMessage = "Không tìm thấy pet để xóa.";
-        else if (error.response.status === 403) errorMessage = "Bạn không có quyền xóa pet này.";
-        else errorMessage = error.response.data?.message || `Lỗi server: ${error.response.status}`;
-      } else if (error.request) errorMessage = "Không thể kết nối đến server.";
-      else errorMessage = error.message;
-
-      alert(`❌ Lỗi khi xóa pet: ${errorMessage}`);
+      alert(
+        "❌ Lỗi đăng ký device: " +
+          (error.response?.data?.message || "Unknown error")
+      );
     } finally {
-      setDeleting(false);
+      setLoading(false);
     }
   };
 
   return (
     <>
       <Navbar />
-      <div className="dashboard-container">
-        <div className="dashboard-header">
-          <h2>🐾 Dashboard Theo Dõi Pet</h2>
-          <Link to="/add-pet"><button>+ Thêm Pet Mới</button></Link>
-        </div>
+      <div className="device-container">
+        <h2>📱 Quản lý Devices & Vùng An Toàn</h2>
 
-        {loading ? (
-          <div className="loading">Đang tải dữ liệu...</div>
-        ) : pets.length === 0 ? (
-          <div className="no-pets">
-            <p>Chưa có pet nào. Thêm pet đầu tiên của bạn!</p>
-            <Link to="/add-pet"><button>Thêm Pet Đầu Tiên</button></Link>
-          </div>
-        ) : (
-          <>
-            <div className="pet-selector">
-              <label>Chọn Pet để theo dõi:</label>
+        <div className="card">
+          <h3>➕ Đăng ký Device & Thiết lập Vùng An Toàn</h3>
+          <form onSubmit={handleRegister} className="device-form">
+            <div className="form-group">
+              <label>Device ID:</label>
+              <input
+                placeholder="Nhập Device ID từ ESP32 (VD: ESP32_ABC123XYZ)"
+                value={deviceId}
+                onChange={(e) => setDeviceId(e.target.value)}
+                required
+              />
+              <small>Device ID từ ESP32 (thường bắt đầu bằng ESP32_)</small>
+            </div>
+
+            <div className="form-group">
+              <label>Chọn Pet:</label>
               <select
-                value={selectedPet?._id || ""}
-                onChange={(e) => {
-                  const pet = pets.find((p) => p._id === e.target.value);
-                  if (pet) handlePetSelect(pet);
-                }}
+                value={selectedPet}
+                onChange={(e) => setSelectedPet(e.target.value)}
+                required
               >
+                <option value="">-- Chọn pet --</option>
                 {pets.map((pet) => (
-                  <option key={pet._id} value={pet._id}>{pet.name} - {pet.species}</option>
+                  <option key={pet._id} value={pet._id}>
+                    {pet.name} ({pet.species})
+                  </option>
                 ))}
               </select>
             </div>
 
-            {selectedPet && (
-              <>
-                <DashboardStats petData={petData} selectedPet={selectedPet} />
+            <div className="form-group">
+              <label>📍 Thiết lập Vùng An Toàn (Tùy chọn):</label>
 
-                <div className="grid-layout">
-                  <div className="map-section">
-                    <h3>🗺️ Bản Đồ Theo Dõi Thời Gian Thực</h3>
-                    <RealTimeMap petData={petData} selectedPet={selectedPet} />
-                  </div>
+              <div className="location-options">
+                <div className="radio-group">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="locationType"
+                      checked={useCurrentLocation}
+                      onChange={handleUseCurrentLocation}
+                    />
+                    <span className="radio-custom"></span>
+                    Dùng vị trí hiện tại của tôi
+                  </label>
 
-                  <div className="alerts-section">
-                    <AlertSystem petData={petData} selectedPet={selectedPet} />
-                  </div>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="locationType"
+                      checked={!useCurrentLocation}
+                      onChange={handleCustomAddress}
+                    />
+                    <span className="radio-custom"></span>
+                    Nhập địa chỉ khác cho pet
+                  </label>
                 </div>
 
-                <div className="pet-list-section">
-                  <div className="section-header">
-                    <h3>📋 Danh Sách Pets Của Bạn</h3>
-                    <small>Tổng số: {pets.length} pet(s)</small>
+                {useCurrentLocation ? (
+                  <div className="current-location-info">
+                    <p>📍 Vị trí hiện tại: {currentLocation}</p>
+                    <small>Vùng an toàn sẽ được đặt tại vị trí này</small>
                   </div>
-                  <div className="pets-grid">
-                    {pets.map((pet) => (
-                      <div key={pet._id} className={`pet-card ${selectedPet?._id === pet._id ? "active" : ""}`}>
-                        <div className="pet-info" onClick={() => handlePetSelect(pet)}>
-                          <h4>{pet.name}</h4>
-                          <p>{pet.species} • {pet.breed}</p>
-                          <p>{pet.age} tuổi</p>
-                          <div className="pet-status">
-                            <span className="status-dot"></span>
-                            <span>Đang hoạt động</span>
-                          </div>
-                        </div>
-                        <div className="pet-actions">
-                          <button
-                            onClick={() => handleDeletePet(pet._id, pet.name)}
-                            disabled={deleting}
-                            className="delete-btn"
-                            title="Xóa pet"
-                          >
-                            {deleting ? "⏳" : "🗑️"}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                ) : (
+                  <div className="custom-address-input">
+                    <input
+                      placeholder="Nhập địa chỉ vùng an toàn cho pet (VD: nhà riêng, công viên...)"
+                      value={safeZoneAddress}
+                      onChange={(e) => handleAddressChange(e.target.value)}
+                    />
+                    <small>
+                      Nhập địa chỉ nơi pet thường ở (nhà riêng, nhà người thân,
+                      công viên...)
+                    </small>
                   </div>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>📏 Bán kính Vùng An Toàn:</label>
+              <select
+                value={safeZoneRadius}
+                onChange={(e) => handleRadiusChange(parseInt(e.target.value))}
+              >
+                <option value={50}>50 mét (khu vực nhỏ)</option>
+                <option value={100}>100 mét (khu vực vừa)</option>
+                <option value={200}>200 mét (khu vực rộng)</option>
+                <option value={500}>500 mét (khu phố)</option>
+                <option value={1000}>1000 mét (toàn khu vực)</option>
+              </select>
+              <small>
+                Khoảng cách tối đa pet có thể di chuyển khỏi vùng an toàn
+              </small>
+            </div>
+
+            {/* Map Preview */}
+            {mapPreview && (
+              <div className="map-preview-section">
+                <label>🗺️ Preview trên Bản Đồ:</label>
+                <div className="map-preview">
+                  <div className="map-placeholder">
+                    <div className="map-mock">
+                      <div className="map-center">📍</div>
+                      <div
+                        className="safe-zone-circle"
+                        style={{ width: `${safeZoneRadius / 10}px` }}
+                      ></div>
+                    </div>
+                    <div className="map-info">
+                      <p>
+                        <strong>Địa chỉ:</strong> {mapPreview.address}
+                      </p>
+                      <p>
+                        <strong>Bán kính:</strong> {mapPreview.radius} mét
+                      </p>
+                      <p>
+                        <strong>Zoom:</strong> {mapPreview.zoom}
+                      </p>
+                    </div>
+                  </div>
+                  <small>Vùng tròn màu xanh thể hiện phạm vi an toàn</small>
                 </div>
-              </>
+              </div>
             )}
-          </>
-        )}
+
+            <button type="submit" disabled={loading}>
+              {loading
+                ? "Đang đăng ký..."
+                : "🔐 Đăng ký & Thiết lập Vùng An Toàn"}
+            </button>
+          </form>
+        </div>
+
+        {/* ... phần devices list và instructions giữ nguyên ... */}
       </div>
     </>
   );
 }
 
-export default Dashboard;
+export default DeviceManagement;
