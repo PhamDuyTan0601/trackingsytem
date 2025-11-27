@@ -91,6 +91,34 @@
   cursor: not-allowed;
 }
 
+/* Address with Action */
+.address-with-action {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.address-with-action .address-autocomplete {
+  flex: 1;
+}
+
+.use-default-btn {
+  padding: 0.5rem 1rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.use-default-btn:hover {
+  background-color: #059669;
+}
+
 /* Google Maps Autocomplete Styles */
 .pac-container {
   border-radius: 0.5rem;
@@ -98,6 +126,7 @@
   box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
   margin-top: 0.125rem;
   z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .pac-item {
@@ -106,6 +135,7 @@
   cursor: pointer;
   font-size: 0.875rem;
   color: #374151;
+  transition: background-color 0.2s;
 }
 
 .pac-item:hover {
@@ -119,6 +149,11 @@
 
 .pac-icon {
   margin-right: 0.5rem;
+}
+
+.pac-matched {
+  font-weight: 600;
+  color: #3b82f6;
 }
 
 /* Devices List */
@@ -205,6 +240,21 @@
 .status.inactive {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+/* Default Address Info */
+.default-address-info {
+  background: #f0f9ff;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  margin-top: 0.5rem;
+  border-left: 0.25rem solid #10b981;
+}
+
+.default-address-info p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: #374151;
 }
 
 /* Safe Zone Info */

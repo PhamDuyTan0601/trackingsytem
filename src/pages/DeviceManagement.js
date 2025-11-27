@@ -9,10 +9,13 @@ function DeviceManagement() {
   const [selectedPet, setSelectedPet] = useState("");
   const [deviceId, setDeviceId] = useState("");
   const [safeZoneAddress, setSafeZoneAddress] = useState("");
+  const [defaultAddress, setDefaultAddress] = useState("");
   const [safeZoneRadius, setSafeZoneRadius] = useState(100);
   const [loading, setLoading] = useState(false);
-  const autocompleteRef = useRef(null);
-  const inputRef = useRef(null);
+  const safeZoneAutocompleteRef = useRef(null);
+  const defaultAddressAutocompleteRef = useRef(null);
+  const safeZoneInputRef = useRef(null);
+  const defaultAddressInputRef = useRef(null);
 
   useEffect(() => {
     fetchPets();
@@ -26,31 +29,51 @@ function DeviceManagement() {
       script.defer = true;
       document.head.appendChild(script);
 
-      script.onload = initAutocomplete;
+      script.onload = initAutocompletes;
     } else {
-      initAutocomplete();
+      initAutocompletes();
     }
   }, []);
 
-  const initAutocomplete = () => {
-    if (window.google && inputRef.current) {
-      autocompleteRef.current = new window.google.maps.places.Autocomplete(
-        inputRef.current,
-        {
-          types: ["address"],
-          componentRestrictions: { country: "vn" },
-          fields: ["formatted_address", "geometry", "name"],
-        }
-      );
+  const initAutocompletes = () => {
+    if (window.google) {
+      // Autocomplete cho vùng an toàn
+      if (safeZoneInputRef.current) {
+        safeZoneAutocompleteRef.current =
+          new window.google.maps.places.Autocomplete(safeZoneInputRef.current, {
+            types: ["address"],
+            componentRestrictions: { country: "vn" },
+            fields: ["formatted_address", "geometry", "name"],
+          });
+        safeZoneAutocompleteRef.current.addListener("place_changed", () => {
+          const place = safeZoneAutocompleteRef.current.getPlace();
+          if (place && place.formatted_address) {
+            setSafeZoneAddress(place.formatted_address);
+          }
+        });
+      }
 
-      autocompleteRef.current.addListener("place_changed", onPlaceChanged);
-    }
-  };
-
-  const onPlaceChanged = () => {
-    const place = autocompleteRef.current.getPlace();
-    if (place && place.formatted_address) {
-      setSafeZoneAddress(place.formatted_address);
+      // Autocomplete cho địa chỉ mặc định
+      if (defaultAddressInputRef.current) {
+        defaultAddressAutocompleteRef.current =
+          new window.google.maps.places.Autocomplete(
+            defaultAddressInputRef.current,
+            {
+              types: ["address"],
+              componentRestrictions: { country: "vn" },
+              fields: ["formatted_address", "geometry", "name"],
+            }
+          );
+        defaultAddressAutocompleteRef.current.addListener(
+          "place_changed",
+          () => {
+            const place = defaultAddressAutocompleteRef.current.getPlace();
+            if (place && place.formatted_address) {
+              setDefaultAddress(place.formatted_address);
+            }
+          }
+        );
+      }
     }
   };
 
@@ -83,21 +106,32 @@ function DeviceManagement() {
     try {
       await registerDevice(deviceId, selectedPet);
 
-      // Lưu thông tin vùng an toàn
-      if (safeZoneAddress) {
-        console.log("Vùng an toàn đã thiết lập:", {
-          address: safeZoneAddress,
-          radius: safeZoneRadius,
-        });
-      }
+      // Lưu thông tin vùng an toàn và địa chỉ mặc định
+      const deviceData = {
+        deviceId,
+        petId: selectedPet,
+        safeZone: safeZoneAddress
+          ? {
+              address: safeZoneAddress,
+              radius: safeZoneRadius,
+            }
+          : null,
+        defaultAddress: defaultAddress || null,
+      };
+
+      console.log("Thông tin device đã đăng ký:", deviceData);
 
       alert(
         "✅ Đăng ký device thành công!" +
-          (safeZoneAddress ? "\n📍 Đã thiết lập vùng an toàn" : "")
+          (safeZoneAddress ? "\n📍 Đã thiết lập vùng an toàn" : "") +
+          (defaultAddress ? "\n🏠 Đã thiết lập địa chỉ mặc định" : "")
       );
+
+      // Reset form
       setDeviceId("");
       setSelectedPet("");
       setSafeZoneAddress("");
+      setDefaultAddress("");
       setSafeZoneRadius(100);
       fetchDevices();
     } catch (error) {
@@ -107,6 +141,12 @@ function DeviceManagement() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUseDefaultAsSafeZone = () => {
+    if (defaultAddress) {
+      setSafeZoneAddress(defaultAddress);
     }
   };
 
@@ -147,18 +187,45 @@ function DeviceManagement() {
             </div>
 
             <div className="form-group">
-              <label>📍 Địa chỉ Vùng An Toàn (Tùy chọn):</label>
+              <label>🏠 Địa chỉ Mặc định (Nhà của pet):</label>
               <div className="address-autocomplete">
                 <input
-                  ref={inputRef}
-                  placeholder="Nhập địa chỉ vùng an toàn..."
-                  value={safeZoneAddress}
-                  onChange={(e) => setSafeZoneAddress(e.target.value)}
+                  ref={defaultAddressInputRef}
+                  placeholder="Nhập địa chỉ mặc định (nhà riêng, căn hộ...)"
+                  value={defaultAddress}
+                  onChange={(e) => setDefaultAddress(e.target.value)}
                   type="text"
                 />
               </div>
               <small>
-                Nhập địa chỉ và chọn từ gợi ý để thiết lập vùng an toàn
+                Địa chỉ nơi pet thường ở nhất (nhà riêng, căn hộ...)
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label>📍 Địa chỉ Vùng An Toàn (Tùy chọn):</label>
+              <div className="address-with-action">
+                <div className="address-autocomplete">
+                  <input
+                    ref={safeZoneInputRef}
+                    placeholder="Nhập địa chỉ vùng an toàn..."
+                    value={safeZoneAddress}
+                    onChange={(e) => setSafeZoneAddress(e.target.value)}
+                    type="text"
+                  />
+                </div>
+                {defaultAddress && (
+                  <button
+                    type="button"
+                    className="use-default-btn"
+                    onClick={handleUseDefaultAsSafeZone}
+                  >
+                    Dùng địa chỉ mặc định
+                  </button>
+                )}
+              </div>
+              <small>
+                Địa chỉ vùng an toàn cho pet (có thể khác với địa chỉ mặc định)
               </small>
             </div>
 
@@ -168,11 +235,11 @@ function DeviceManagement() {
                 value={safeZoneRadius}
                 onChange={(e) => setSafeZoneRadius(parseInt(e.target.value))}
               >
-                <option value={50}>50 mét</option>
-                <option value={100}>100 mét</option>
-                <option value={200}>200 mét</option>
-                <option value={500}>500 mét</option>
-                <option value={1000}>1000 mét</option>
+                <option value={50}>50 mét (khu vực nhỏ)</option>
+                <option value={100}>100 mét (khu vực vừa)</option>
+                <option value={200}>200 mét (khu vực rộng)</option>
+                <option value={500}>500 mét (khu phố)</option>
+                <option value={1000}>1000 mét (toàn khu vực)</option>
               </select>
               <small>
                 Khoảng cách tối đa pet có thể di chuyển khỏi vùng an toàn
@@ -203,6 +270,11 @@ function DeviceManagement() {
                         {device.petId?.species}
                       </span>
                     </div>
+                    {device.defaultAddress && (
+                      <div className="default-address-info">
+                        <p>🏠 Địa chỉ mặc định: {device.defaultAddress}</p>
+                      </div>
+                    )}
                     {device.safeZone && (
                       <div className="safe-zone-info">
                         <p>📍 Vùng an toàn: {device.safeZone.address}</p>
@@ -238,8 +310,12 @@ function DeviceManagement() {
               <strong>Chọn Pet</strong> - Pet mà device sẽ theo dõi
             </li>
             <li>
-              <strong>Thiết lập Vùng An Toàn</strong> - Nhập địa chỉ và chọn từ
-              gợi ý
+              <strong>Nhập địa chỉ mặc định</strong> - Nơi pet thường ở nhất
+              (nhà riêng)
+            </li>
+            <li>
+              <strong>Thiết lập Vùng An Toàn</strong> - Có thể dùng địa chỉ mặc
+              định hoặc nhập địa chỉ khác
             </li>
             <li>
               <strong>Chọn Bán Kính</strong> - Phạm vi an toàn cho pet
