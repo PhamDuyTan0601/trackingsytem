@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getPetsByUser, registerDevice, getMyDevices } from "../api/api";
 import Navbar from "../components/Navbar";
 import "./DeviceManagement.css";
@@ -9,16 +9,29 @@ function DeviceManagement() {
   const [selectedPet, setSelectedPet] = useState("");
   const [deviceId, setDeviceId] = useState("");
   const [safeZoneAddress, setSafeZoneAddress] = useState("");
-  const [safeZoneRadius, setSafeZoneRadius] = useState(100); // meters
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState("");
+  const [safeZoneRadius, setSafeZoneRadius] = useState(100);
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
+  const addressInputRef = useRef(null);
 
   useEffect(() => {
     fetchPets();
     fetchDevices();
-    getCurrentLocation();
+
+    // Load Google Maps Places API
+    loadGoogleMapsAPI();
   }, []);
+
+  const loadGoogleMapsAPI = () => {
+    if (!window.google) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  };
 
   const fetchPets = async () => {
     try {
@@ -38,19 +51,42 @@ function DeviceManagement() {
     }
   };
 
-  const getCurrentLocation = () => {
-    // Giả lập lấy vị trí hiện tại (trong thực tế sẽ dùng Geolocation API)
-    setCurrentLocation("123 Đường Nguyễn Văn A, Quận 1, TP.HCM");
+  const handleAddressInput = (address) => {
+    setSafeZoneAddress(address);
+
+    if (address.length > 2 && window.google) {
+      getAddressSuggestions(address);
+    } else {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+    }
   };
 
-  const handleUseCurrentLocation = () => {
-    setSafeZoneAddress(currentLocation);
-    setUseCurrentLocation(true);
+  const getAddressSuggestions = (input) => {
+    if (!window.google || !window.google.maps) return;
+
+    const service = new window.google.maps.places.AutocompleteService();
+    service.getPlacePredictions(
+      { input, componentRestrictions: { country: "vn" } },
+      (predictions, status) => {
+        if (
+          status === window.google.maps.places.PlacesServiceStatus.OK &&
+          predictions
+        ) {
+          setAddressSuggestions(predictions);
+          setShowSuggestions(true);
+        } else {
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      }
+    );
   };
 
-  const handleCustomAddress = () => {
-    setSafeZoneAddress("");
-    setUseCurrentLocation(false);
+  const selectAddress = (address) => {
+    setSafeZoneAddress(address.description);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleRegister = async (e) => {
@@ -64,12 +100,11 @@ function DeviceManagement() {
     try {
       await registerDevice(deviceId, selectedPet);
 
-      // Lưu thông tin vùng an toàn (cần tích hợp với backend)
+      // Lưu thông tin vùng an toàn
       if (safeZoneAddress) {
         console.log("Vùng an toàn đã thiết lập:", {
           address: safeZoneAddress,
           radius: safeZoneRadius,
-          useCurrentLocation,
         });
       }
 
@@ -81,7 +116,8 @@ function DeviceManagement() {
       setSelectedPet("");
       setSafeZoneAddress("");
       setSafeZoneRadius(100);
-      setUseCurrentLocation(false);
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
       fetchDevices();
     } catch (error) {
       alert(
@@ -130,64 +166,47 @@ function DeviceManagement() {
             </div>
 
             <div className="form-group">
-              <label>📍 Thiết lập Vùng An Toàn:</label>
-
-              <div className="location-options">
-                <div className="radio-group">
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="locationType"
-                      checked={useCurrentLocation}
-                      onChange={handleUseCurrentLocation}
-                    />
-                    <span className="radio-custom"></span>
-                    Dùng vị trí hiện tại của tôi
-                  </label>
-
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="locationType"
-                      checked={!useCurrentLocation}
-                      onChange={handleCustomAddress}
-                    />
-                    <span className="radio-custom"></span>
-                    Nhập địa chỉ khác
-                  </label>
-                </div>
-
-                {useCurrentLocation ? (
-                  <div className="current-location-info">
-                    <p>📍 Vị trí hiện tại: {currentLocation}</p>
-                    <small>Vùng an toàn sẽ được đặt tại vị trí này</small>
-                  </div>
-                ) : (
-                  <div className="custom-address-input">
-                    <input
-                      placeholder="Nhập địa chỉ vùng an toàn cho pet"
-                      value={safeZoneAddress}
-                      onChange={(e) => setSafeZoneAddress(e.target.value)}
-                    />
-                    <small>
-                      Ví dụ: 123 Đường ABC, Quận 1, TP.HCM - nơi pet thường ở
-                    </small>
+              <label>📍 Địa chỉ Vùng An Toàn (Tùy chọn):</label>
+              <div className="address-autocomplete">
+                <input
+                  ref={addressInputRef}
+                  placeholder="Nhập địa chỉ vùng an toàn..."
+                  value={safeZoneAddress}
+                  onChange={(e) => handleAddressInput(e.target.value)}
+                  onFocus={() =>
+                    safeZoneAddress.length > 2 && setShowSuggestions(true)
+                  }
+                />
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="suggestions-dropdown">
+                    {addressSuggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="suggestion-item"
+                        onClick={() => selectAddress(suggestion)}
+                      >
+                        {suggestion.description}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
+              <small>
+                Nhập địa chỉ nơi pet thường ở để thiết lập vùng an toàn
+              </small>
             </div>
 
             <div className="form-group">
-              <label>Bán kính Vùng An Toàn:</label>
+              <label>📏 Bán kính Vùng An Toàn:</label>
               <select
                 value={safeZoneRadius}
                 onChange={(e) => setSafeZoneRadius(parseInt(e.target.value))}
               >
-                <option value={50}>50 mét (khu vực nhỏ)</option>
-                <option value={100}>100 mét (khu vực vừa)</option>
-                <option value={200}>200 mét (khu vực rộng)</option>
-                <option value={500}>500 mét (khu phố)</option>
-                <option value={1000}>1000 mét (toàn khu vực)</option>
+                <option value={50}>50 mét</option>
+                <option value={100}>100 mét</option>
+                <option value={200}>200 mét</option>
+                <option value={500}>500 mét</option>
+                <option value={1000}>1000 mét</option>
               </select>
               <small>
                 Khoảng cách tối đa pet có thể di chuyển khỏi vùng an toàn
@@ -195,9 +214,7 @@ function DeviceManagement() {
             </div>
 
             <button type="submit" disabled={loading}>
-              {loading
-                ? "Đang đăng ký..."
-                : "🔐 Đăng ký Device & Thiết lập Vùng An Toàn"}
+              {loading ? "Đang đăng ký..." : "🔐 Đăng ký Device"}
             </button>
           </form>
         </div>
@@ -246,46 +263,22 @@ function DeviceManagement() {
         </div>
 
         <div className="card instructions-card">
-          <h3>📖 Hướng Dẫn Thiết lập Vùng An Toàn</h3>
+          <h3>📖 Hướng Dẫn Sử Dụng</h3>
           <ol>
-            <li>
-              <strong>Chọn loại vị trí</strong>:
-              <ul>
-                <li>
-                  📍 <strong>Vị trí hiện tại</strong>: Dùng khi bạn đang ở cùng
-                  vị trí với pet
-                </li>
-                <li>
-                  🏠 <strong>Địa chỉ khác</strong>: Dùng khi pet ở địa điểm cố
-                  định (nhà riêng, công viên...)
-                </li>
-              </ul>
-            </li>
             <li>
               <strong>Nhập Device ID</strong> - ID từ ESP32
             </li>
             <li>
-              <strong>Chọn Pet</strong> - Pet cần theo dõi
+              <strong>Chọn Pet</strong> - Pet mà device sẽ theo dõi
             </li>
             <li>
-              <strong>Chọn bán kính</strong> - Phạm vi cho phép pet di chuyển
+              <strong>Thiết lập Vùng An Toàn</strong> - Nhập địa chỉ và chọn bán
+              kính
             </li>
             <li>
               <strong>Đăng ký</strong> - Hoàn tất thiết lập
             </li>
           </ol>
-
-          <div className="scenario-examples">
-            <h4>📝 Ví dụ thực tế:</h4>
-            <div className="scenario">
-              <strong>Scenario 1:</strong> Pet ở nhà riêng
-              <p>→ Chọn "Nhập địa chỉ khác" → Nhập địa chỉ nhà</p>
-            </div>
-            <div className="scenario">
-              <strong>Scenario 2:</strong> Bạn đang dắt pet đi dạo
-              <p>→ Chọn "Vị trí hiện tại" → Vùng an toàn sẽ ở công viên</p>
-            </div>
-          </div>
         </div>
       </div>
     </>
