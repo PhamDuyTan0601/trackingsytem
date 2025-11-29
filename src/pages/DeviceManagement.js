@@ -1,24 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
-import { getPetsByUser, registerDevice, getMyDevices } from "../api/api";
+import React, { useState, useEffect } from "react";
+import { getPetsByUser, registerDevice } from "../api/api";
 import Navbar from "../components/Navbar";
 import "./DeviceManagement.css";
 
 function DeviceManagement() {
   const [pets, setPets] = useState([]);
-  const [devices, setDevices] = useState([]);
   const [selectedPet, setSelectedPet] = useState("");
   const [deviceId, setDeviceId] = useState("");
-  const [safeZoneAddress, setSafeZoneAddress] = useState("");
-  const [defaultAddress, setDefaultAddress] = useState("");
-  const [safeZoneRadius, setSafeZoneRadius] = useState(100);
   const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debounceRef = useRef(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     fetchPets();
-    fetchDevices();
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    setUser(userData);
   }, []);
 
   const fetchPets = async () => {
@@ -27,74 +22,6 @@ function DeviceManagement() {
       setPets(res.data.pets || []);
     } catch (error) {
       console.error("Error fetching pets:", error);
-    }
-  };
-
-  const fetchDevices = async () => {
-    try {
-      const res = await getMyDevices();
-      setDevices(res.data.devices || []);
-    } catch (error) {
-      console.error("Error fetching devices:", error);
-    }
-  };
-
-  const searchAddress = async (query) => {
-    if (query.length < 3) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          query
-        )}&countrycodes=vn&limit=5`
-      );
-      const data = await response.json();
-
-      const addresses = data.map((item) => ({
-        display_name: item.display_name,
-        lat: item.lat,
-        lon: item.lon,
-      }));
-
-      setSuggestions(addresses);
-      setShowSuggestions(true);
-    } catch (error) {
-      console.error("Error fetching addresses:", error);
-      setSuggestions([]);
-    }
-  };
-
-  const handleAddressInput = (value, type) => {
-    if (type === "default") {
-      setDefaultAddress(value);
-    } else {
-      setSafeZoneAddress(value);
-    }
-
-    // Debounce search
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      searchAddress(value);
-    }, 300);
-  };
-
-  const selectSuggestion = (address, type) => {
-    if (type === "default") {
-      setDefaultAddress(address.display_name);
-    } else {
-      setSafeZoneAddress(address.display_name);
-    }
-    setShowSuggestions(false);
-    setSuggestions([]);
-  };
-
-  const handleUseDefaultAsSafeZone = () => {
-    if (defaultAddress) {
-      setSafeZoneAddress(defaultAddress);
     }
   };
 
@@ -109,21 +36,11 @@ function DeviceManagement() {
     try {
       await registerDevice(deviceId, selectedPet);
 
-      alert(
-        "✅ Đăng ký device thành công!" +
-          (safeZoneAddress ? "\n📍 Đã thiết lập vùng an toàn" : "") +
-          (defaultAddress ? "\n🏠 Đã thiết lập địa chỉ mặc định" : "")
-      );
+      alert("✅ Đăng ký device thành công!");
 
       // Reset form
       setDeviceId("");
       setSelectedPet("");
-      setSafeZoneAddress("");
-      setDefaultAddress("");
-      setSafeZoneRadius(100);
-      setShowSuggestions(false);
-      setSuggestions([]);
-      fetchDevices();
     } catch (error) {
       alert(
         "❌ Lỗi đăng ký device: " +
@@ -139,6 +56,27 @@ function DeviceManagement() {
       <Navbar />
       <div className="device-container">
         <h2>📱 Quản lý Devices</h2>
+
+        {/* Thông tin user */}
+        {user && (
+          <div
+            className="card"
+            style={{ marginBottom: "1.5rem", background: "#f0f9ff" }}
+          >
+            <h4>👤 Thông tin tài khoản</h4>
+            <p>
+              <strong>Tên:</strong> {user.name}
+            </p>
+            {user.phone && (
+              <p>
+                <strong>SĐT:</strong> {user.phone}
+              </p>
+            )}
+            <p>
+              <strong>Email:</strong> {user.email}
+            </p>
+          </div>
+        )}
 
         <div className="card">
           <h3>➕ Đăng ký Device Mới</h3>
@@ -168,101 +106,7 @@ function DeviceManagement() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div className="form-group">
-              <label>🏠 Địa chỉ Mặc định (Nhà của pet):</label>
-              <div className="address-autocomplete">
-                <input
-                  placeholder="Nhập địa chỉ mặc định (VD: 123 Lê Lợi Quận 1 TP.HCM)"
-                  value={defaultAddress}
-                  onChange={(e) =>
-                    handleAddressInput(e.target.value, "default")
-                  }
-                  onFocus={() =>
-                    defaultAddress.length >= 2 && setShowSuggestions(true)
-                  }
-                  type="text"
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <div className="suggestions-dropdown">
-                    {suggestions.map((address, index) => (
-                      <div
-                        key={index}
-                        className="suggestion-item"
-                        onClick={() => selectSuggestion(address, "default")}
-                      >
-                        📍 {address.display_name}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <small>
-                Địa chỉ nơi pet thường ở nhất (nhập ít nhất 3 ký tự để xem gợi
-                ý)
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label>📍 Địa chỉ Vùng An Toàn (Tùy chọn):</label>
-              <div className="address-with-action">
-                <div className="address-autocomplete">
-                  <input
-                    placeholder="Nhập địa chỉ vùng an toàn..."
-                    value={safeZoneAddress}
-                    onChange={(e) =>
-                      handleAddressInput(e.target.value, "safeZone")
-                    }
-                    onFocus={() =>
-                      safeZoneAddress.length >= 2 && setShowSuggestions(true)
-                    }
-                    type="text"
-                  />
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="suggestions-dropdown">
-                      {suggestions.map((address, index) => (
-                        <div
-                          key={index}
-                          className="suggestion-item"
-                          onClick={() => selectSuggestion(address, "safeZone")}
-                        >
-                          📍 {address.display_name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {defaultAddress && (
-                  <button
-                    type="button"
-                    className="use-default-btn"
-                    onClick={handleUseDefaultAsSafeZone}
-                  >
-                    Dùng địa chỉ mặc định
-                  </button>
-                )}
-              </div>
-              <small>
-                Địa chỉ vùng an toàn cho pet (có thể khác với địa chỉ mặc định)
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label>📏 Bán kính Vùng An Toàn:</label>
-              <select
-                value={safeZoneRadius}
-                onChange={(e) => setSafeZoneRadius(parseInt(e.target.value))}
-              >
-                <option value={50}>50 mét (khu vực nhỏ)</option>
-                <option value={100}>100 mét (khu vực vừa)</option>
-                <option value={200}>200 mét (khu vực rộng)</option>
-                <option value={500}>500 mét (khu phố)</option>
-                <option value={1000}>1000 mét (toàn khu vực)</option>
-              </select>
-              <small>
-                Khoảng cách tối đa pet có thể di chuyển khỏi vùng an toàn
-              </small>
+              <small>Chỉ hiển thị pets thuộc quyền sở hữu của bạn</small>
             </div>
 
             <button type="submit" disabled={loading}>
@@ -271,7 +115,33 @@ function DeviceManagement() {
           </form>
         </div>
 
-        {/* ... phần còn lại giữ nguyên ... */}
+        {/* Hướng dẫn sử dụng */}
+        <div className="card instructions-card">
+          <h3>📖 Hướng Dẫn Sử Dụng</h3>
+          <ol>
+            <li>
+              <strong>Lấy Device ID từ ESP32:</strong> Device ID thường được
+              hiển thị trên màn hình LCD của ESP32 hoặc trong Serial Monitor
+              (thường bắt đầu bằng "ESP32_").
+            </li>
+            <li>
+              <strong>Chọn Pet:</strong> Chọn pet mà bạn muốn gắn device theo
+              dõi.
+            </li>
+            <li>
+              <strong>Đăng ký:</strong> Nhấn "Đăng ký Device" để hoàn tất quá
+              trình đăng ký.
+            </li>
+            <li>
+              <strong>Theo dõi:</strong> Sau khi đăng ký thành công, bạn có thể
+              theo dõi vị trí và trạng thái của pet trong mục Dashboard.
+            </li>
+            <li>
+              <strong>Quản lý:</strong> Mỗi device chỉ có thể đăng ký với một
+              pet duy nhất.
+            </li>
+          </ol>
+        </div>
       </div>
     </>
   );

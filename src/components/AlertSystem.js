@@ -2,7 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import "./AlertSystem.css";
 
-export default function AlertSystem({ petData, selectedPet }) {
+export default function AlertSystem({
+  petData,
+  selectedPet,
+  geofenceRadius,
+  safeZoneCenter,
+}) {
   const [alerts, setAlerts] = useState([]);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -15,35 +20,48 @@ export default function AlertSystem({ petData, selectedPet }) {
         Math.cos((lat2 * Math.PI) / 180) *
         Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    return R * c * 1000; // Convert to meters
   };
 
-  // ✅ useCallback để fix ESLint warning
   const checkAlerts = useCallback(
     (latestData) => {
       const newAlerts = [];
 
+      // Check battery
       if (latestData.batteryLevel < 20) {
         newAlerts.push({
           type: "battery",
-          message: `Pin thấp: ${latestData.batteryLevel}%`,
+          message: `🔋 Pin thấp: ${latestData.batteryLevel}%`,
           level: "warning",
         });
       }
 
-      const safeZoneCenter = [10.8231, 106.6297];
-      const distance = calculateDistance(
-        safeZoneCenter[0],
-        safeZoneCenter[1],
-        latestData.latitude,
-        latestData.longitude
-      );
+      // Check geofence
+      if (safeZoneCenter && latestData.latitude && latestData.longitude) {
+        const distance = calculateDistance(
+          safeZoneCenter[0],
+          safeZoneCenter[1],
+          latestData.latitude,
+          latestData.longitude
+        );
 
-      if (distance > 0.5) {
+        if (distance > geofenceRadius) {
+          newAlerts.push({
+            type: "geofence",
+            message: `🚨 ${
+              selectedPet?.name || "Pet"
+            } đã ra khỏi vùng an toàn! (${distance.toFixed(0)}m)`,
+            level: "danger",
+          });
+        }
+      }
+
+      // Check activity alerts
+      if (latestData.activityType === "running") {
         newAlerts.push({
-          type: "location",
-          message: "Pet ra khỏi vùng an toàn!",
-          level: "danger",
+          type: "activity",
+          message: `🏃 ${selectedPet?.name || "Pet"} đang chạy nhanh!`,
+          level: "info",
         });
       }
 
@@ -53,12 +71,21 @@ export default function AlertSystem({ petData, selectedPet }) {
             (a) => a.type === alert.type && a.message === alert.message
           )
         ) {
-          toast[alert.level === "danger" ? "error" : "warning"](alert.message);
-          setAlerts((prev) => [...prev, { ...alert, id: Date.now() }]);
+          toast[
+            alert.level === "danger"
+              ? "error"
+              : alert.level === "warning"
+              ? "warning"
+              : "info"
+          ](alert.message);
+          setAlerts((prev) => [
+            ...prev,
+            { ...alert, id: Date.now(), timestamp: new Date() },
+          ]);
         }
       });
     },
-    [alerts]
+    [alerts, geofenceRadius, safeZoneCenter, selectedPet]
   );
 
   useEffect(() => {
@@ -73,7 +100,7 @@ export default function AlertSystem({ petData, selectedPet }) {
 
   return (
     <div className="alert-system-container">
-      <h2 className="alert-system-title"> Thông báo</h2>
+      <h2 className="alert-system-title">⚠️ Cảnh Báo & Thông Báo</h2>
 
       {alerts.length === 0 ? (
         <div className="alert-empty-state">
@@ -84,15 +111,12 @@ export default function AlertSystem({ petData, selectedPet }) {
       ) : (
         <div className="alert-list">
           {alerts.map((alert) => (
-            <div
-              key={alert.id}
-              className={`alert-item ${alert.level}`}
-            >
+            <div key={alert.id} className={`alert-item ${alert.level}`}>
               <div className="alert-content">
                 <div>
                   <p className="alert-message">{alert.message}</p>
                   <p className="alert-time">
-                    {new Date().toLocaleTimeString()}
+                    {alert.timestamp.toLocaleTimeString()}
                   </p>
                 </div>
                 <button
