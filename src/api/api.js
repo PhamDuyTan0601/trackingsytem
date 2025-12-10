@@ -13,7 +13,6 @@ const getAuthHeader = () => {
   const token = localStorage.getItem("token");
   if (!token) {
     console.warn("⚠️ No authentication token found!");
-    // Không throw error để tránh crash, chỉ log warning
     return {};
   }
   return {
@@ -24,14 +23,35 @@ const getAuthHeader = () => {
 };
 
 // ===============================
+// 🧮 UTILITY FUNCTIONS (ĐẶT Ở ĐẦU FILE)
+// ===============================
+
+// 🚨 THÊM HÀM NÀY TRƯỚC KHI ĐƯỢC SỬ DỤNG
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in meters
+
+  return distance;
+};
+
+// ===============================
 // 🧑‍💼 USER APIs
 // ===============================
 
-// Đăng ký tài khoản - THÊM SỐ ĐIỆN THOẠI
 export const registerUser = (userData) =>
   axios.post(`${API_URL}/api/users/register`, userData);
 
-// Đăng nhập - hỗ trợ cả email và số điện thoại
 export const loginUser = async (userData) => {
   const response = await axios.post(`${API_URL}/api/users/login`, userData);
 
@@ -43,7 +63,6 @@ export const loginUser = async (userData) => {
   return response;
 };
 
-// Đăng xuất
 export const logoutUser = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
@@ -51,11 +70,9 @@ export const logoutUser = () => {
   window.location.href = "/login";
 };
 
-// Lấy thông tin user profile
 export const getUserProfile = async () =>
   axios.get(`${API_URL}/api/users/profile`, getAuthHeader());
 
-// Cập nhật thông tin user (bao gồm số điện thoại)
 export const updateUserProfile = async (userData) =>
   axios.put(`${API_URL}/api/users/profile`, userData, getAuthHeader());
 
@@ -63,31 +80,25 @@ export const updateUserProfile = async (userData) =>
 // 🐾 PET APIs
 // ===============================
 
-// Lấy danh sách pet của user hiện tại
 export const getPetsByUser = async () =>
   axios.get(`${API_URL}/api/pets/my-pets`, getAuthHeader());
 
-// Tạo pet mới
 export const addPet = async (petData) =>
   axios.post(`${API_URL}/api/pets`, petData, getAuthHeader());
 
-// Lấy chi tiết 1 pet (chỉ owner thấy)
 export const getPetById = async (petId) =>
   axios.get(`${API_URL}/api/pets/${petId}`, getAuthHeader());
 
-// Xóa pet
 export const deletePet = async (petId) =>
   axios.delete(`${API_URL}/api/pets/${petId}`, getAuthHeader());
 
 // ===============================
-// 🛡️ SAFE ZONE APIs (MỚI)
+// 🛡️ SAFE ZONE APIs
 // ===============================
 
-// Lấy danh sách safe zones của pet
 export const getSafeZones = async (petId) =>
   axios.get(`${API_URL}/api/pets/${petId}/safe-zones`, getAuthHeader());
 
-// Thêm safe zone mới
 export const addSafeZone = async (petId, safeZoneData) =>
   axios.post(
     `${API_URL}/api/pets/${petId}/safe-zones`,
@@ -95,7 +106,6 @@ export const addSafeZone = async (petId, safeZoneData) =>
     getAuthHeader()
   );
 
-// Cập nhật safe zone
 export const updateSafeZone = async (petId, zoneId, updateData) =>
   axios.put(
     `${API_URL}/api/pets/${petId}/safe-zones/${zoneId}`,
@@ -103,7 +113,6 @@ export const updateSafeZone = async (petId, zoneId, updateData) =>
     getAuthHeader()
   );
 
-// Toggle trạng thái active/inactive của safe zone
 export const toggleSafeZone = async (petId, zoneId) =>
   axios.patch(
     `${API_URL}/api/pets/${petId}/safe-zones/${zoneId}/toggle`,
@@ -111,7 +120,6 @@ export const toggleSafeZone = async (petId, zoneId) =>
     getAuthHeader()
   );
 
-// Xóa safe zone
 export const deleteSafeZone = async (petId, zoneId) =>
   axios.delete(
     `${API_URL}/api/pets/${petId}/safe-zones/${zoneId}`,
@@ -122,15 +130,12 @@ export const deleteSafeZone = async (petId, zoneId) =>
 // 📈 PET DATA APIs
 // ===============================
 
-// Lấy dữ liệu mới nhất của pet
 export const getLatestPetData = async (petId) =>
   axios.get(`${API_URL}/api/petData/pet/${petId}/latest`, getAuthHeader());
 
-// Lấy tất cả dữ liệu của pet
 export const getAllPetData = async (petId) =>
   axios.get(`${API_URL}/api/petData/pet/${petId}`, getAuthHeader());
 
-// Lấy dữ liệu trong khoảng thời gian
 export const getPetDataInRange = async (petId, startDate, endDate) =>
   axios.get(
     `${API_URL}/api/petData/pet/${petId}?start=${startDate}&end=${endDate}`,
@@ -141,7 +146,6 @@ export const getPetDataInRange = async (petId, startDate, endDate) =>
 // 📱 DEVICE APIs
 // ===============================
 
-// Đăng ký device với pet
 export const registerDevice = async (deviceId, petId) =>
   axios.post(
     `${API_URL}/api/devices/register`,
@@ -149,23 +153,25 @@ export const registerDevice = async (deviceId, petId) =>
     getAuthHeader()
   );
 
-// Lấy danh sách devices của user
 export const getMyDevices = async () =>
   axios.get(`${API_URL}/api/devices/my-devices`, getAuthHeader());
 
-// Lấy thông tin pet từ deviceId (cho ESP32)
 export const getPetByDevice = async (deviceId) =>
   axios.get(`${API_URL}/api/devices/pet/${deviceId}`);
 
-// 🆕 ESP32 lấy cấu hình (petId, phoneNumber, safeZone, v.v.)
 export const getDeviceConfig = async (deviceId) =>
   axios.get(`${API_URL}/api/devices/config/${deviceId}`);
 
-// Test ESP32 config endpoint (dùng để debug)
 export const testDeviceConfig = async (deviceId) => {
   try {
     const response = await getDeviceConfig(deviceId);
     console.log("✅ Device Config Response:", response.data);
+    if (response.data.safeZones) {
+      console.log(`📦 Safe Zones received: ${response.data.safeZones.length}`);
+      response.data.safeZones.forEach((zone, index) => {
+        console.log(`   Zone ${index + 1}: ${zone.name} (${zone.radius}m)`);
+      });
+    }
     return response;
   } catch (error) {
     console.error(
@@ -176,89 +182,80 @@ export const testDeviceConfig = async (deviceId) => {
   }
 };
 
+export const triggerDeviceConfig = async (deviceId) =>
+  axios.post(`${API_URL}/api/devices/trigger-config/${deviceId}`);
+
 // ===============================
-// 🧩 AXIOS INTERCEPTOR - CẢI THIỆN XỬ LÝ LỖI
+// 🛠️ EXPORTED UTILITY FUNCTIONS
 // ===============================
 
-// Tạo instance axios mới để tránh ảnh hưởng đến các request khác
-const apiInstance = axios.create({
-  baseURL: API_URL,
-  timeout: 10000, // 10 seconds timeout
-});
+// 🚨 EXPORT HÀM calculateDistance
+export { calculateDistance };
 
-// Request interceptor
-apiInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// Kiểm tra xem điểm có nằm trong bất kỳ safe zone nào không
+export const isPointInAnySafeZone = (pointLat, pointLng, safeZones = []) => {
+  if (!safeZones || safeZones.length === 0) return false;
+
+  for (const zone of safeZones) {
+    if (zone.isActive && isPointInSafeZone(pointLat, pointLng, zone)) {
+      return {
+        inZone: true,
+        zoneName: zone.name,
+        zoneId: zone._id,
+        radius: zone.radius,
+      };
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
   }
-);
 
-// Response interceptor
-apiInstance.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    console.error(
-      "API Error:",
-      error.response?.status,
-      error.response?.data || error.message
+  return { inZone: false };
+};
+
+// Kiểm tra xem điểm có nằm trong safe zone không
+export const isPointInSafeZone = (pointLat, pointLng, safeZone) => {
+  if (!safeZone || !safeZone.center) return false;
+
+  const distance = calculateDistance(
+    pointLat,
+    pointLng,
+    safeZone.center.lat,
+    safeZone.center.lng
+  );
+
+  return distance <= safeZone.radius;
+};
+
+// Format ESP32 config với safeZones array
+export const formatESP32Config = (configData) => {
+  return {
+    deviceId: configData.deviceId,
+    petId: configData.petId,
+    petName: configData.petName,
+    phoneNumber: configData.phoneNumber,
+    ownerName: configData.ownerName,
+    serverUrl: configData.serverUrl || API_URL,
+    updateInterval: configData.updateInterval || 30000,
+    safeZones: configData.safeZones || [],
+    timestamp: new Date().toISOString(),
+    version: "2.0.0",
+  };
+};
+
+// Thêm hàm để force gửi config khi safe zone thay đổi
+export const forceConfigUpdate = async (petId) => {
+  try {
+    const devices = await getMyDevices();
+    const device = devices.data.devices.find(
+      (d) => d.petId === petId || d.petId._id === petId
     );
 
-    // Xử lý lỗi 401 - Unauthorized
-    if (error.response?.status === 401) {
-      console.warn("⚠️ Token expired or invalid. Logging out...");
-      logoutUser();
-      window.location.href = "/login";
+    if (device) {
+      console.log(`🔧 Force updating config for device: ${device.deviceId}`);
+      return await triggerDeviceConfig(device.deviceId);
     }
-
-    // Xử lý lỗi 403 - Forbidden
-    if (error.response?.status === 403) {
-      alert("⛔ Bạn không có quyền truy cập tài nguyên này!");
-    }
-
-    // Xử lý lỗi 404 - Not Found
-    if (error.response?.status === 404) {
-      console.warn("📭 Resource not found:", error.config.url);
-    }
-
-    // Xử lý lỗi 500 - Server Error
-    if (error.response?.status === 500) {
-      console.error("🔥 Server internal error");
-      alert("🚨 Máy chủ đang gặp sự cố. Vui lòng thử lại sau!");
-    }
-
-    // Xử lý lỗi mạng
-    if (error.code === "NETWORK_ERROR" || error.code === "ECONNREFUSED") {
-      console.error("🌐 Network error - Cannot connect to server");
-      alert(
-        "🔌 Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet!"
-      );
-    }
-
-    // Xử lý timeout
-    if (error.code === "ECONNABORTED") {
-      console.error("⏰ Request timeout");
-      alert("⏳ Yêu cầu quá thời gian chờ. Vui lòng thử lại!");
-    }
-
-    return Promise.reject(error);
+  } catch (error) {
+    console.error("❌ Force config update error:", error);
   }
-);
-
-// Export apiInstance cho các component muốn dùng trực tiếp
-export { apiInstance };
-
-// ===============================
-// 🛠️ UTILITY FUNCTIONS
-// ===============================
+};
 
 // Validate số điện thoại Việt Nam
 export const validateVietnamesePhone = (phone) => {
@@ -270,7 +267,6 @@ export const validateVietnamesePhone = (phone) => {
 // Format số điện thoại hiển thị
 export const formatPhoneDisplay = (phone) => {
   if (!phone) return "";
-  // Format: 0912 345 678 hoặc +84 912 345 678
   if (phone.startsWith("+84")) {
     return phone.replace(/(\+84)(\d{2})(\d{3})(\d{3})/, "$1 $2 $3 $4");
   } else if (phone.startsWith("0")) {
@@ -285,7 +281,6 @@ export const isTokenValid = () => {
   if (!token) return false;
 
   try {
-    // Kiểm tra cơ bản token (không verify signature)
     const payload = JSON.parse(atob(token.split(".")[1]));
     const isExpired = payload.exp * 1000 <= Date.now();
     return !isExpired;
@@ -311,77 +306,63 @@ export const isAuthenticated = () => {
   return !!localStorage.getItem("token") && isTokenValid();
 };
 
-// Lấy deviceId từ URL parameters (cho ESP32)
+// Lấy deviceId từ URL parameters
 export const getDeviceIdFromUrl = () => {
   const params = new URLSearchParams(window.location.search);
   return params.get("deviceId") || params.get("device_id") || null;
 };
 
-// Helper để tính khoảng cách giữa 2 điểm (Haversine formula)
-export const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371000; // Earth's radius in meters
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in meters
-
-  return distance;
-};
-
-// Kiểm tra xem điểm có nằm trong safe zone không
-export const isPointInSafeZone = (pointLat, pointLng, safeZone) => {
-  if (!safeZone || !safeZone.center) return false;
-
-  const distance = calculateDistance(
-    pointLat,
-    pointLng,
-    safeZone.center.lat,
-    safeZone.center.lng
-  );
-
-  return distance <= safeZone.radius;
-};
-
-// Format response data cho ESP32 (giống backend response)
-export const formatESP32Config = (configData) => {
-  return {
-    deviceId: configData.deviceId,
-    petId: configData.petId,
-    petName: configData.petName,
-    phoneNumber: configData.phoneNumber,
-    ownerName: configData.ownerName,
-    serverUrl: configData.serverUrl || API_URL,
-    updateInterval: configData.updateInterval || 30000,
-    safeZone: configData.safeZone, // Bao gồm center và radius
-    timestamp: new Date().toISOString(),
-  };
-};
-
-// Debug: In tất cả API endpoints
+// Debug với thông tin chi tiết hơn
 export const debugAPIEndpoints = () => {
   console.log("🔧 API Endpoints Debug:");
   console.log("Base URL:", API_URL);
-  console.log("User Register:", `${API_URL}/api/users/register`);
-  console.log("User Login:", `${API_URL}/api/users/login`);
-  console.log("User Profile:", `${API_URL}/api/users/profile`);
-  console.log("Pets:", `${API_URL}/api/pets/my-pets`);
-  console.log("Safe Zones:", `${API_URL}/api/pets/{petId}/safe-zones`);
-  console.log("Pet Data:", `${API_URL}/api/petData/pet/{petId}`);
-  console.log("Device Register:", `${API_URL}/api/devices/register`);
   console.log("Device Config:", `${API_URL}/api/devices/config/{deviceId}`);
+  console.log("Safe Zones:", `${API_URL}/api/pets/{petId}/safe-zones`);
   console.log(
     "Auth Token:",
     localStorage.getItem("token") ? "✅ Present" : "❌ Missing"
   );
-  console.log("Current User:", getCurrentUser());
+
+  const deviceId = prompt("Enter deviceId for config test:");
+  if (deviceId) {
+    testDeviceConfig(deviceId);
+  }
 };
 
+// Tạo instance axios
+const apiInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+});
+
+// Interceptors
+apiInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+apiInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error(
+      "API Error:",
+      error.response?.status,
+      error.response?.data || error.message
+    );
+
+    if (error.response?.status === 401) {
+      logoutUser();
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export { apiInstance };
 export default apiInstance;

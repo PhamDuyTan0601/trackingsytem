@@ -3,30 +3,86 @@ import {
   getPetsByUser,
   getAllPetData,
   getSafeZones,
-  addSafeZone,
+  updateSafeZone,
   deleteSafeZone,
 } from "../api/api";
 import Navbar from "../components/Navbar";
 import RealTimeMap from "../components/RealTimeMap";
 import AlertSystem from "../components/AlertSystem";
-import DashboardStats from "../components/DashboardStats";
+import { toast } from "react-toastify";
 import "./Dashboard.css";
 
 function Dashboard() {
   const [pets, setPets] = useState([]);
   const [selectedPet, setSelectedPet] = useState("");
   const [petData, setPetData] = useState([]);
-  const [safeZones, setSafeZones] = useState([]); // THÊM STATE MỚI
+  const [safeZones, setSafeZones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [geofenceRadius, setGeofenceRadius] = useState(100);
-  const [safeZoneCenter, setSafeZoneCenter] = useState(null);
-  const [initialPositionSet, setInitialPositionSet] = useState(false);
-  const [showAddSafeZone, setShowAddSafeZone] = useState(false);
-  const [newSafeZone, setNewSafeZone] = useState({
-    name: "Vùng an toàn",
-    center: { lat: null, lng: null },
-    radius: 100,
+  const [autoCreateDone, setAutoCreateDone] = useState(false);
+  const [activeSafeZoneId, setActiveSafeZoneId] = useState(null);
+  const [showPath, setShowPath] = useState(true);
+  const [isFetchingData, setIsFetchingData] = useState(false);
+  const [dataTimeRange, setDataTimeRange] = useState({
+    start: null,
+    end: null,
   });
+
+  // Thêm state cho radius control
+  const [radius, setRadius] = useState(100);
+  const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
+  const [isCleaningOldZones, setIsCleaningOldZones] = useState(false);
+
+  // 🚨 THÊM: State cho offline mode
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [usingCachedData, setUsingCachedData] = useState(false);
+
+  // 🚨 THÊM: Khôi phục trạng thái từ localStorage khi component mount
+  useEffect(() => {
+    // Kiểm tra trạng thái mạng
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Khôi phục selectedPet từ localStorage
+    const savedSelectedPetId = localStorage.getItem("selectedPetId");
+    if (savedSelectedPetId) {
+      console.log(`💾 Khôi phục pet đã chọn từ cache: ${savedSelectedPetId}`);
+    }
+
+    // Khôi phục radius từ localStorage
+    const savedRadius = localStorage.getItem("radius");
+    if (savedRadius) {
+      setRadius(parseInt(savedRadius));
+    }
+
+    // Khôi phục showPath từ localStorage
+    const savedShowPath = localStorage.getItem("showPath");
+    if (savedShowPath !== null) {
+      setShowPath(savedShowPath === "true");
+    }
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // 🚨 THÊM: Lưu trạng thái vào localStorage khi thay đổi
+  useEffect(() => {
+    if (selectedPet) {
+      localStorage.setItem("selectedPetId", selectedPet);
+    }
+  }, [selectedPet]);
+
+  useEffect(() => {
+    localStorage.setItem("radius", radius.toString());
+  }, [radius]);
+
+  useEffect(() => {
+    localStorage.setItem("showPath", showPath.toString());
+  }, [showPath]);
 
   useEffect(() => {
     fetchPets();
@@ -35,152 +91,456 @@ function Dashboard() {
   useEffect(() => {
     if (selectedPet) {
       fetchPetData(selectedPet);
-      fetchSafeZones(selectedPet); // THÊM: Lấy safe zones từ backend
+      fetchSafeZones(selectedPet);
+      startAutoRefresh();
     }
+
+    return () => {
+      stopAutoRefresh();
+    };
   }, [selectedPet]);
 
-  // Lấy tọa độ lần đầu tiên từ ESP32 và cố định
+  // Tự động tạo safe zone khi ESP32 gửi vị trí đầu tiên
   useEffect(() => {
-    if (petData && petData.length > 0 && !initialPositionSet) {
-      const validData = petData.find((data) => data.latitude && data.longitude);
-      if (validData) {
-        // Set tâm vùng an toàn từ dữ liệu đầu tiên và cố định
-        setSafeZoneCenter([validData.latitude, validData.longitude]);
-        setInitialPositionSet(true);
-        console.log(
-          "✅ Đã thiết lập tâm vùng an toàn từ dữ liệu ESP32 đầu tiên"
-        );
+    if (
+      petData &&
+      petData.length > 0 &&
+      selectedPet &&
+      !autoCreateDone &&
+      safeZones.length === 0
+    ) {
+      const latestData = petData[0];
+      if (latestData.latitude && latestData.longitude) {
+        createAutoSafeZone(latestData.latitude, latestData.longitude);
       }
     }
-  }, [petData, initialPositionSet]);
+  }, [petData, selectedPet, autoCreateDone, safeZones]);
+
+  // Xóa tất cả safe zones cũ trừ cái hiện tại
+  useEffect(() => {
+    if (safeZones.length > 1) {
+      cleanupOldSafeZones();
+    }
+  }, [safeZones]);
+
+  // Auto refresh dữ liệu mỗi 30 giây
+  const startAutoRefresh = () => {
+    if (selectedPet) {
+      const interval = setInterval(() => {
+        if (!isFetchingData && isOnline) {
+          // 🚨 Chỉ refresh khi online
+          fetchPetData(selectedPet);
+        }
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  };
+
+  const stopAutoRefresh = () => {
+    // Cleanup sẽ được thực hiện trong useEffect
+  };
 
   const fetchPets = async () => {
     try {
+      // 🚨 THÊM: Thử load từ cache trước
+      const cachedPets = localStorage.getItem("cachedPets");
+      if (cachedPets && !isOnline) {
+        console.log("📦 Sử dụng dữ liệu pets từ cache (offline mode)");
+        const userPets = JSON.parse(cachedPets);
+        setPets(userPets);
+
+        if (userPets.length > 0) {
+          const savedPetId = localStorage.getItem("selectedPetId");
+          const petId =
+            savedPetId && userPets.some((p) => p._id === savedPetId)
+              ? savedPetId
+              : userPets[0]._id;
+          setSelectedPet(petId);
+        }
+        setLoading(false);
+        setUsingCachedData(true);
+        return;
+      }
+
       const res = await getPetsByUser();
       const userPets = res.data.pets || [];
       setPets(userPets);
 
+      // 🚨 THÊM: Lưu vào cache
+      localStorage.setItem("cachedPets", JSON.stringify(userPets));
+
       if (userPets.length > 0) {
-        setSelectedPet(userPets[0]._id);
+        const savedPetId = localStorage.getItem("selectedPetId");
+        const petId =
+          savedPetId && userPets.some((p) => p._id === savedPetId)
+            ? savedPetId
+            : userPets[0]._id;
+        setSelectedPet(petId);
       }
       setLoading(false);
+      setUsingCachedData(false);
     } catch (error) {
       console.error("Error fetching pets:", error);
+
+      // 🚨 THÊM: Thử load từ cache nếu API fail
+      const cachedPets = localStorage.getItem("cachedPets");
+      if (cachedPets) {
+        console.log("⚠️ API failed, using cached pets");
+        const userPets = JSON.parse(cachedPets);
+        setPets(userPets);
+
+        if (userPets.length > 0) {
+          const savedPetId = localStorage.getItem("selectedPetId");
+          const petId =
+            savedPetId && userPets.some((p) => p._id === savedPetId)
+              ? savedPetId
+              : userPets[0]._id;
+          setSelectedPet(petId);
+        }
+        setUsingCachedData(true);
+      } else {
+        toast.error("Không thể tải danh sách pet!");
+      }
       setLoading(false);
     }
   };
 
-  const fetchPetData = async (petId) => {
+  const fetchPetData = async (petId, forceRefresh = false) => {
+    if (isFetchingData && !forceRefresh) return;
+
+    // 🚨 THÊM: Nếu offline, load từ cache
+    if (!isOnline && !forceRefresh) {
+      console.log("📦 Offline mode - loading pet data from cache");
+      const cachedPetData = localStorage.getItem(`cachedPetData_${petId}`);
+      if (cachedPetData) {
+        const data = JSON.parse(cachedPetData);
+        const sortedData = data.sort(
+          (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        setPetData(sortedData);
+        updateTimeRange(sortedData);
+        setUsingCachedData(true);
+        toast.info("📦 Đang sử dụng dữ liệu cached (offline mode)");
+      }
+      return;
+    }
+
+    setIsFetchingData(true);
     try {
       const res = await getAllPetData(petId);
       const data = res.data.data || [];
-      setPetData(data);
 
-      // Reset initial position khi chuyển pet
-      setInitialPositionSet(false);
+      // Sort by timestamp descending (newest first)
+      const sortedData = data.sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
+
+      setPetData(sortedData);
+
+      // 🚨 THÊM: Lưu vào cache
+      localStorage.setItem(
+        `cachedPetData_${petId}`,
+        JSON.stringify(sortedData)
+      );
+
+      // Update time range
+      updateTimeRange(sortedData);
+
+      if (forceRefresh) {
+        toast.info(`🔄 Đã cập nhật ${sortedData.length} điểm dữ liệu`);
+      }
+      setUsingCachedData(false);
     } catch (error) {
       console.error("Error fetching pet data:", error);
-      setPetData([]);
+
+      // 🚨 THÊM: Thử load từ cache nếu API fail
+      const cachedPetData = localStorage.getItem(`cachedPetData_${petId}`);
+      if (cachedPetData) {
+        console.log("⚠️ API failed, using cached pet data");
+        const data = JSON.parse(cachedPetData);
+        const sortedData = data.sort(
+          (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+        );
+        setPetData(sortedData);
+        updateTimeRange(sortedData);
+        setUsingCachedData(true);
+        toast.warning("⚠️ Đang sử dụng dữ liệu cũ (không thể kết nối server)");
+      } else {
+        toast.error("Không thể tải dữ liệu vị trí!");
+      }
+    } finally {
+      setIsFetchingData(false);
     }
   };
 
-  // THÊM: Hàm lấy safe zones từ backend
+  // 🚨 THÊM: Helper function để update time range
+  const updateTimeRange = (sortedData) => {
+    if (sortedData.length > 0) {
+      setDataTimeRange({
+        start: sortedData[sortedData.length - 1]?.timestamp,
+        end: sortedData[0]?.timestamp,
+      });
+    }
+  };
+
   const fetchSafeZones = async (petId) => {
     try {
+      // 🚨 THÊM: Thử load từ cache trước
+      const cachedSafeZones = localStorage.getItem(`cachedSafeZones_${petId}`);
+      if (cachedSafeZones && !isOnline) {
+        console.log("📦 Offline mode - loading safe zones from cache");
+        const zones = JSON.parse(cachedSafeZones);
+        processSafeZones(zones);
+        setUsingCachedData(true);
+        return;
+      }
+
       const res = await getSafeZones(petId);
       if (res.data.success) {
-        setSafeZones(res.data.safeZones || []);
+        const zones = res.data.safeZones || [];
+
+        // 🚨 THÊM: Lưu vào cache
+        localStorage.setItem(`cachedSafeZones_${petId}`, JSON.stringify(zones));
+
+        processSafeZones(zones);
+        setUsingCachedData(false);
       }
     } catch (error) {
       console.error("Error fetching safe zones:", error);
-      setSafeZones([]);
-    }
-  };
 
-  // THÊM: Hàm thêm safe zone mới
-  const handleAddSafeZone = async () => {
-    if (!newSafeZone.center.lat || !newSafeZone.center.lng) {
-      alert("⚠️ Vui lòng nhập tọa độ cho vùng an toàn!");
-      return;
-    }
-
-    if (newSafeZone.radius < 10 || newSafeZone.radius > 5000) {
-      alert("⚠️ Bán kính phải từ 10m đến 5000m!");
-      return;
-    }
-
-    try {
-      const res = await addSafeZone(selectedPet, newSafeZone);
-      if (res.data.success) {
-        alert("✅ Đã thêm vùng an toàn!");
-        setSafeZones([...safeZones, res.data.safeZone]);
-        setShowAddSafeZone(false);
-        setNewSafeZone({
-          name: "Vùng an toàn",
-          center: { lat: null, lng: null },
-          radius: 100,
-        });
-      }
-    } catch (error) {
-      console.error("Error adding safe zone:", error);
-      alert("❌ Lỗi khi thêm vùng an toàn");
-    }
-  };
-
-  // THÊM: Hàm xóa safe zone
-  const handleDeleteSafeZone = async (zoneId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa vùng an toàn này?")) return;
-
-    try {
-      const res = await deleteSafeZone(selectedPet, zoneId);
-      if (res.data.success) {
-        alert("✅ Đã xóa vùng an toàn!");
-        setSafeZones(safeZones.filter((zone) => zone._id !== zoneId));
-      }
-    } catch (error) {
-      console.error("Error deleting safe zone:", error);
-      alert("❌ Lỗi khi xóa vùng an toàn");
-    }
-  };
-
-  const handleGeofenceRadiusChange = (radius) => {
-    setGeofenceRadius(radius);
-  };
-
-  // Cho phép reset vùng an toàn nếu cần
-  const resetSafeZone = () => {
-    if (petData && petData.length > 0) {
-      const latestData = petData[0];
-      if (latestData.latitude && latestData.longitude) {
-        setSafeZoneCenter([latestData.latitude, latestData.longitude]);
-        console.log("🔄 Đã reset tâm vùng an toàn");
+      // 🚨 THÊM: Thử load từ cache nếu API fail
+      const cachedSafeZones = localStorage.getItem(`cachedSafeZones_${petId}`);
+      if (cachedSafeZones) {
+        console.log("⚠️ API failed, using cached safe zones");
+        const zones = JSON.parse(cachedSafeZones);
+        processSafeZones(zones);
+        setUsingCachedData(true);
+      } else {
+        setSafeZones([]);
       }
     }
   };
 
-  // THÊM: Dùng vị trí hiện tại làm tâm safe zone
-  const useCurrentLocation = () => {
-    const latestData = getLatestPetData();
-    if (latestData && latestData.latitude && latestData.longitude) {
-      setNewSafeZone({
-        ...newSafeZone,
-        center: {
-          lat: latestData.latitude,
-          lng: latestData.longitude,
-        },
-      });
-      alert("✅ Đã lấy vị trí hiện tại làm tâm vùng an toàn!");
+  // 🚨 THÊM: Helper function để xử lý safe zones
+  const processSafeZones = (zones) => {
+    // Chỉ lấy safe zone mới nhất (tự động tạo)
+    const autoCreatedZones = zones.filter((zone) => zone.autoCreated);
+
+    if (autoCreatedZones.length > 0) {
+      // Lấy zone mới nhất
+      const latestZone = autoCreatedZones.reduce((latest, current) => {
+        return new Date(current.createdAt) > new Date(latest.createdAt)
+          ? current
+          : latest;
+      }, autoCreatedZones[0]);
+
+      setSafeZones([latestZone]);
+      setAutoCreateDone(true);
+      setActiveSafeZoneId(latestZone._id);
+      setRadius(latestZone.radius || 100);
     } else {
-      alert("⚠️ Chưa có dữ liệu vị trí từ ESP32!");
+      setSafeZones(zones);
+
+      if (zones.length > 0) {
+        setAutoCreateDone(true);
+        setActiveSafeZoneId(zones[0]._id);
+        setRadius(zones[0].radius || 100);
+      }
     }
   };
 
+  // Xóa tất cả safe zones cũ
+  const cleanupOldSafeZones = async () => {
+    if (!selectedPet || safeZones.length <= 1) return;
+
+    setIsCleaningOldZones(true);
+    try {
+      const currentZoneId = activeSafeZoneId;
+      const zonesToDelete = safeZones.filter(
+        (zone) => zone._id !== currentZoneId
+      );
+
+      for (const zone of zonesToDelete) {
+        await deleteSafeZone(selectedPet, zone._id);
+      }
+
+      // Chỉ giữ lại zone hiện tại
+      const currentZone = safeZones.find((zone) => zone._id === currentZoneId);
+      if (currentZone) {
+        setSafeZones([currentZone]);
+        // 🚨 THÊM: Cập nhật cache
+        localStorage.setItem(
+          `cachedSafeZones_${selectedPet}`,
+          JSON.stringify([currentZone])
+        );
+      }
+
+      toast.success(`🧹 Đã dọn dẹp ${zonesToDelete.length} vùng an toàn cũ`);
+    } catch (error) {
+      console.error("Error cleaning up old safe zones:", error);
+      toast.error("❌ Không thể dọn dẹp vùng an toàn cũ");
+    } finally {
+      setIsCleaningOldZones(false);
+    }
+  };
+
+  // Tự động tạo safe zone từ ESP32
+  const createAutoSafeZone = async (lat, lng) => {
+    try {
+      console.log("🚀 Tự động tạo safe zone từ ESP32:", { lat, lng });
+
+      const petName = pets.find((p) => p._id === selectedPet)?.name || "Pet";
+
+      const response = await fetch(
+        `https://pettracking2.onrender.com/api/pets/${selectedPet}/safe-zones`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            name: `Vùng an toàn ${petName} (Tự động tạo)`,
+            center: { lat, lng },
+            radius: 100, // Radius mặc định
+            autoCreated: true,
+            isPrimary: true,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.safeZone) {
+        console.log("✅ Đã tự động tạo safe zone:", data.safeZone);
+        setSafeZones([data.safeZone]);
+        setAutoCreateDone(true);
+        setActiveSafeZoneId(data.safeZone._id);
+        setRadius(data.safeZone.radius || 100);
+
+        // 🚨 THÊM: Lưu vào cache
+        localStorage.setItem(
+          `cachedSafeZones_${selectedPet}`,
+          JSON.stringify([data.safeZone])
+        );
+
+        toast.success(`✅ Đã tạo vùng an toàn cho ${petName}`);
+      }
+    } catch (error) {
+      console.error("❌ Lỗi khi tự động tạo safe zone:", error);
+      toast.error("❌ Không thể tạo vùng an toàn (offline mode)");
+    }
+  };
+
+  // Cập nhật radius của safe zone
+  const updateRadius = async () => {
+    if (!activeSafeZoneId || !selectedPet) {
+      toast.error("Không có safe zone để cập nhật!");
+      return;
+    }
+
+    setIsUpdatingRadius(true);
+    try {
+      await updateSafeZone(selectedPet, activeSafeZoneId, { radius });
+
+      // Cập nhật local state
+      const updatedZones = safeZones.map((zone) =>
+        zone._id === activeSafeZoneId ? { ...zone, radius } : zone
+      );
+      setSafeZones(updatedZones);
+
+      // 🚨 THÊM: Cập nhật cache
+      localStorage.setItem(
+        `cachedSafeZones_${selectedPet}`,
+        JSON.stringify(updatedZones)
+      );
+
+      toast.success(`✅ Đã cập nhật bán kính: ${radius}m`);
+    } catch (error) {
+      console.error("Error updating radius:", error);
+
+      // 🚨 THÊM: Vẫn update local state ngay cả khi offline
+      const updatedZones = safeZones.map((zone) =>
+        zone._id === activeSafeZoneId ? { ...zone, radius } : zone
+      );
+      setSafeZones(updatedZones);
+      localStorage.setItem(
+        `cachedSafeZones_${selectedPet}`,
+        JSON.stringify(updatedZones)
+      );
+
+      toast.warning(
+        `⚠️ Đã cập nhật bán kính local (${radius}m) - sẽ sync khi online`
+      );
+    } finally {
+      setIsUpdatingRadius(false);
+    }
+  };
+
+  // Xử lý thay đổi radius từ slider
+  const handleRadiusChange = (e) => {
+    const newRadius = parseInt(e.target.value);
+    setRadius(newRadius);
+  };
+
+  // Apply radius khi nhấn Enter
+  const handleRadiusKeyPress = (e) => {
+    if (e.key === "Enter") {
+      updateRadius();
+    }
+  };
+
+  // Xóa toàn bộ dữ liệu đường đi (chỉ trên frontend)
+  const handleClearPath = () => {
+    if (window.confirm("Bạn có chắc muốn xóa dữ liệu đường đi hiển thị?")) {
+      setPetData([]);
+      localStorage.removeItem(`cachedPetData_${selectedPet}`);
+      toast.info("🗑️ Đã xóa dữ liệu đường đi hiển thị");
+    }
+  };
+
+  // Lấy thông tin pet đang chọn
   const getSelectedPetInfo = () => {
     return pets.find((pet) => pet._id === selectedPet);
   };
 
+  // Lấy dữ liệu mới nhất
   const getLatestPetData = () => {
     return petData && petData.length > 0 ? petData[0] : null;
+  };
+
+  // Format time range
+  const formatTimeRange = () => {
+    if (!dataTimeRange.start || !dataTimeRange.end) return "";
+
+    const start = new Date(dataTimeRange.start);
+    const end = new Date(dataTimeRange.end);
+
+    return `${start.toLocaleTimeString("vi-VN")} - ${end.toLocaleTimeString(
+      "vi-VN"
+    )}`;
+  };
+
+  // Lấy active safe zone
+  const getActiveSafeZone = () => {
+    return safeZones.find((zone) => zone._id === activeSafeZoneId);
+  };
+
+  // 🚨 THÊM: Xóa cache
+  const clearAllCache = () => {
+    if (window.confirm("Bạn có chắc muốn xóa tất cả dữ liệu cached?")) {
+      // Xóa tất cả cache liên quan đến pets
+      localStorage.removeItem("cachedPets");
+      localStorage.removeItem("selectedPetId");
+
+      // Xóa cache của từng pet
+      pets.forEach((pet) => {
+        localStorage.removeItem(`cachedPetData_${pet._id}`);
+        localStorage.removeItem(`cachedSafeZones_${pet._id}`);
+      });
+
+      toast.success("🧹 Đã xóa tất cả dữ liệu cached");
+    }
   };
 
   if (loading) {
@@ -188,7 +548,10 @@ function Dashboard() {
       <>
         <Navbar />
         <div className="dashboard-container">
-          <div className="loading">Đang tải dữ liệu...</div>
+          <div className="loading">
+            <div className="loading-spinner"></div>
+            <p>Đang tải dữ liệu...</p>
+          </div>
         </div>
       </>
     );
@@ -200,7 +563,8 @@ function Dashboard() {
         <Navbar />
         <div className="dashboard-container">
           <div className="no-pets">
-            <p>🐾 Bạn chưa có pet nào!</p>
+            <div className="no-pets-icon">🐾</div>
+            <p>Bạn chưa có pet nào!</p>
             <button onClick={() => (window.location.href = "/add-pet")}>
               ➕ Thêm Pet Mới
             </button>
@@ -212,344 +576,297 @@ function Dashboard() {
 
   const latestData = getLatestPetData();
   const selectedPetInfo = getSelectedPetInfo();
+  const activeSafeZone = getActiveSafeZone();
 
   return (
     <>
       <Navbar />
       <div className="dashboard-container">
+        {/* Header */}
         <div className="dashboard-header">
-          <h2>🐕 Dashboard Theo Dõi Pet</h2>
-          {latestData && (
-            <div style={{ fontSize: "0.9rem", color: "#6b7280" }}>
-              📍 Vị trí hiện tại: {latestData.latitude?.toFixed(6)},{" "}
-              {latestData.longitude?.toFixed(6)}
+          <div className="header-left">
+            <h2>🐕 Dashboard Theo Dõi Pet</h2>
+            {selectedPetInfo && (
+              <div className="current-pet-info">
+                <span className="pet-name">{selectedPetInfo.name}</span>
+                <span className="pet-species">{selectedPetInfo.species}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="header-right">
+            {latestData && (
+              <div className="current-location">
+                <span className="location-icon">📍</span>
+                <span className="coordinates">
+                  {latestData.latitude?.toFixed(6)},{" "}
+                  {latestData.longitude?.toFixed(6)}
+                </span>
+                <span className="location-time">
+                  {latestData.timestamp
+                    ? new Date(latestData.timestamp).toLocaleTimeString("vi-VN")
+                    : "N/A"}
+                </span>
+              </div>
+            )}
+
+            {/* 🚨 THÊM: Hiển thị trạng thái mạng */}
+            <div className="network-status">
+              <div
+                className={`status-indicator ${
+                  isOnline ? "online" : "offline"
+                }`}
+              >
+                ●
+              </div>
+              <span className="status-text">
+                {isOnline ? "Online" : "Offline"}
+              </span>
+              {usingCachedData && (
+                <span
+                  className="cache-indicator"
+                  title="Đang sử dụng dữ liệu cached"
+                >
+                  📦
+                </span>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Pet Selector */}
         <div className="pet-selector">
-          <label>Chọn Pet để theo dõi:</label>
+          <div className="selector-header">
+            <label>Chọn Pet để theo dõi:</label>
+            <div className="selector-actions">
+              <button
+                className="refresh-btn"
+                onClick={() => fetchPetData(selectedPet, true)}
+                disabled={isFetchingData || !isOnline}
+                title={!isOnline ? "Không thể refresh khi offline" : ""}
+              >
+                {isFetchingData ? "🔄 Đang tải..." : "🔄 Làm mới"}
+              </button>
+              <button
+                className="cache-clear-btn"
+                onClick={clearAllCache}
+                title="Xóa dữ liệu cached"
+              >
+                🧹 Clear Cache
+              </button>
+            </div>
+          </div>
           <select
             value={selectedPet}
             onChange={(e) => setSelectedPet(e.target.value)}
+            disabled={isFetchingData}
           >
             {pets.map((pet) => (
               <option key={pet._id} value={pet._id}>
-                {pet.name} ({pet.species})
+                {pet.name} ({pet.species}) - {pet.breed}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Grid Layout: Map và Alerts */}
-        <div className="grid-layout">
-          {/* Map Section với Geofence Controls */}
-          <div className="map-section">
-            <h3>
-              🗺️ Bản Đồ Theo Dõi
-              {safeZoneCenter && (
-                <span
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "#10b981",
-                    marginLeft: "10px",
-                  }}
-                >
-                  (Vùng an toàn: {geofenceRadius}m)
+        {/* Safe Zone Controls - CHỈ HIỂN THỊ RADIUS CONTROL */}
+        {safeZones.length > 0 && (
+          <div className="safe-zone-controls-panel">
+            <div className="safe-zone-header">
+              <h3>🎯 Điều Chỉnh Vùng An Toàn</h3>
+              <div className="active-zone-info">
+                <span className="zone-name">
+                  {activeSafeZone?.name || "Vùng an toàn tự động"}
                 </span>
-              )}
-            </h3>
-
-            {/* Nút thêm safe zone */}
-            <div
-              style={{
-                marginBottom: "1rem",
-                display: "flex",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={() => setShowAddSafeZone(!showAddSafeZone)}
-                style={{
-                  padding: "0.5rem 1rem",
-                  background: showAddSafeZone ? "#ef4444" : "#10b981",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.375rem",
-                  cursor: "pointer",
-                  fontSize: "0.8rem",
-                }}
-              >
-                {showAddSafeZone ? "✖️ Đóng" : "➕ Thêm Vùng An Toàn"}
-              </button>
+                <span className="zone-status">
+                  {activeSafeZone?.autoCreated
+                    ? " (Tự động tạo từ vị trí đầu tiên)"
+                    : ""}
+                </span>
+              </div>
             </div>
 
-            {/* Form thêm safe zone */}
-            {showAddSafeZone && (
-              <div
-                className="card"
-                style={{ marginBottom: "1rem", background: "#f0f9ff" }}
-              >
-                <h4>📍 Thiết lập Vùng An Toàn Mới</h4>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <input
-                    placeholder="Tên vùng an toàn"
-                    value={newSafeZone.name}
-                    onChange={(e) =>
-                      setNewSafeZone({ ...newSafeZone, name: e.target.value })
-                    }
-                    style={{ padding: "0.5rem" }}
-                  />
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <input
-                      type="number"
-                      step="0.000001"
-                      placeholder="Latitude"
-                      value={newSafeZone.center.lat || ""}
-                      onChange={(e) =>
-                        setNewSafeZone({
-                          ...newSafeZone,
-                          center: {
-                            ...newSafeZone.center,
-                            lat: parseFloat(e.target.value),
-                          },
-                        })
-                      }
-                      style={{ flex: 1, padding: "0.5rem" }}
-                    />
-                    <input
-                      type="number"
-                      step="0.000001"
-                      placeholder="Longitude"
-                      value={newSafeZone.center.lng || ""}
-                      onChange={(e) =>
-                        setNewSafeZone({
-                          ...newSafeZone,
-                          center: {
-                            ...newSafeZone.center,
-                            lng: parseFloat(e.target.value),
-                          },
-                        })
-                      }
-                      style={{ flex: 1, padding: "0.5rem" }}
-                    />
-                    <input
-                      type="number"
-                      min="10"
-                      max="5000"
-                      placeholder="Bán kính (m)"
-                      value={newSafeZone.radius}
-                      onChange={(e) =>
-                        setNewSafeZone({
-                          ...newSafeZone,
-                          radius: parseInt(e.target.value),
-                        })
-                      }
-                      style={{ width: "120px", padding: "0.5rem" }}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button
-                      onClick={handleAddSafeZone}
-                      style={{
-                        flex: 1,
-                        background: "#3b82f6",
-                        padding: "0.5rem",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "0.375rem",
-                        cursor: "pointer",
-                      }}
+            <div className="radius-control-container">
+              <div className="radius-control-header">
+                <label htmlFor="radius-slider">Bán kính vùng an toàn:</label>
+                <div className="radius-value-display">
+                  <span className="radius-value">{radius}m</span>
+                  <span className="radius-range">(0 - 5000m)</span>
+                  {!isOnline && (
+                    <span
+                      className="offline-badge"
+                      title="Thay đổi sẽ được lưu local"
                     >
-                      💾 Lưu Vùng An Toàn
-                    </button>
-                    <button
-                      onClick={useCurrentLocation}
-                      style={{
-                        background: "#10b981",
-                        padding: "0.5rem",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "0.375rem",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                      disabled={!latestData}
-                    >
-                      📍 Dùng Vị Trí Hiện Tại
-                    </button>
-                  </div>
+                      📦 Local
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
 
-            <RealTimeMap
-              petData={petData}
-              selectedPet={getSelectedPetInfo()}
-              geofenceRadius={geofenceRadius}
-              safeZoneCenter={safeZoneCenter}
-              safeZones={safeZones} // TRUYỀN SAFE ZONES VÀO MAP
-              onGeofenceRadiusChange={handleGeofenceRadiusChange}
-              onResetSafeZone={resetSafeZone}
-              initialPositionSet={initialPositionSet}
-            />
-          </div>
-
-          {/* Alerts Section */}
-          <div className="alerts-section">
-            <h3>⚠️ Cảnh Báo & Thông Báo</h3>
-            <AlertSystem
-              petData={petData}
-              selectedPet={getSelectedPetInfo()}
-              geofenceRadius={geofenceRadius}
-              safeZoneCenter={safeZoneCenter}
-              safeZones={safeZones} // TRUYỀN SAFE ZONES VÀO ALERTS
-            />
-          </div>
-        </div>
-
-        {/* Stats Section */}
-        <div style={{ marginBottom: "2rem" }}>
-          <DashboardStats
-            petData={petData}
-            selectedPet={getSelectedPetInfo()}
-          />
-        </div>
-
-        {/* Safe Zones List */}
-        {safeZones.length > 0 && (
-          <div className="card" style={{ marginBottom: "1.5rem" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "1rem",
-              }}
-            >
-              <h3>🛡️ Danh Sách Vùng An Toàn</h3>
-              <span
-                style={{
-                  background: "#10b981",
-                  color: "white",
-                  padding: "0.25rem 0.75rem",
-                  borderRadius: "0.25rem",
-                  fontSize: "0.8rem",
-                }}
-              >
-                {safeZones.length} vùng
-              </span>
-            </div>
-
-            <div className="devices-list">
-              {safeZones.map((zone) => (
-                <div
-                  key={zone._id}
-                  className="device-item"
-                  style={{
-                    borderLeft: zone.isActive
-                      ? "4px solid #10b981"
-                      : "4px solid #9ca3af",
-                  }}
-                >
-                  <div className="device-info">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                      }}
-                    >
-                      <div>
-                        <strong>{zone.name}</strong>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "0.5rem",
-                            marginTop: "0.25rem",
-                          }}
-                        >
-                          <span
-                            style={{
-                              background: zone.isActive ? "#d1fae5" : "#f3f4f6",
-                              color: zone.isActive ? "#065f46" : "#6b7280",
-                              padding: "0.25rem 0.5rem",
-                              borderRadius: "0.25rem",
-                              fontSize: "0.75rem",
-                            }}
-                          >
-                            {zone.isActive
-                              ? "🟢 Đang hoạt động"
-                              : "⚫ Tạm ngừng"}
-                          </span>
-                          <span
-                            style={{
-                              background: "#dbeafe",
-                              color: "#1e40af",
-                              padding: "0.25rem 0.5rem",
-                              borderRadius: "0.25rem",
-                              fontSize: "0.75rem",
-                            }}
-                          >
-                            📏 {zone.radius}m
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            marginTop: "0.5rem",
-                            fontSize: "0.85rem",
-                            color: "#4b5563",
-                          }}
-                        >
-                          <div>
-                            📍 {zone.center.lat.toFixed(6)},{" "}
-                            {zone.center.lng.toFixed(6)}
-                          </div>
-                          {zone.createdAt && (
-                            <div>
-                              📅 Tạo:{" "}
-                              {new Date(zone.createdAt).toLocaleDateString(
-                                "vi-VN"
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteSafeZone(zone._id)}
-                        style={{
-                          padding: "0.25rem 0.5rem",
-                          background: "#ef4444",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "0.25rem",
-                          cursor: "pointer",
-                          fontSize: "0.75rem",
-                        }}
-                        title="Xóa vùng an toàn"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
+              <div className="radius-slider-container">
+                <input
+                  type="range"
+                  id="radius-slider"
+                  min="0"
+                  max="5000"
+                  step="10"
+                  value={radius}
+                  onChange={handleRadiusChange}
+                  onKeyPress={handleRadiusKeyPress}
+                  className="radius-slider"
+                  disabled={!activeSafeZoneId}
+                />
+                <div className="slider-labels">
+                  <span>0m</span>
+                  <span>100m</span>
+                  <span>500m</span>
+                  <span>1000m</span>
+                  <span>2000m</span>
+                  <span>5000m</span>
                 </div>
-              ))}
+              </div>
+
+              <div className="radius-actions">
+                <input
+                  type="number"
+                  min="0"
+                  max="5000"
+                  value={radius}
+                  onChange={(e) => setRadius(parseInt(e.target.value) || 0)}
+                  onKeyPress={handleRadiusKeyPress}
+                  className="radius-input"
+                  placeholder="Nhập bán kính..."
+                  disabled={!activeSafeZoneId}
+                />
+                <button
+                  className="update-radius-btn"
+                  onClick={updateRadius}
+                  disabled={isUpdatingRadius || !activeSafeZoneId}
+                >
+                  {isUpdatingRadius ? "⏳ Đang cập nhật..." : "💾 Cập nhật"}
+                </button>
+                <button
+                  className="reset-radius-btn"
+                  onClick={() => setRadius(activeSafeZone?.radius || 100)}
+                  title="Reset về giá trị ban đầu"
+                  disabled={!activeSafeZoneId}
+                >
+                  🔄 Reset
+                </button>
+
+                {/* Nút dọn dẹp safe zones cũ */}
+                {isCleaningOldZones && (
+                  <button className="cleaning-btn" disabled>
+                    🧹 Đang dọn dẹp...
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Pet List Section */}
+        {/* Map Controls */}
+        {petData.length > 0 && (
+          <div className="map-controls-panel">
+            <div className="control-buttons">
+              <button
+                className={`path-toggle-btn ${showPath ? "active" : ""}`}
+                onClick={() => setShowPath(!showPath)}
+              >
+                {showPath ? "🗺️ Ẩn đường đi" : "🗺️ Hiện đường đi"}
+              </button>
+              <button
+                className="clear-path-btn"
+                onClick={handleClearPath}
+                title="Xóa dữ liệu đường đi hiển thị"
+              >
+                🗑️ Xóa đường đi
+              </button>
+            </div>
+
+            <div className="path-stats-summary">
+              <div className="data-count">
+                <span className="stat-icon">📍</span>
+                <span className="stat-label">Số điểm:</span>
+                <span className="stat-value">{petData.length}</span>
+                {usingCachedData && (
+                  <span className="cache-badge" title="Dữ liệu từ cache">
+                    📦
+                  </span>
+                )}
+              </div>
+
+              {petData.length > 0 && (
+                <>
+                  <div className="time-range">
+                    <span className="stat-icon">⏱️</span>
+                    <span className="stat-label">Khoảng thời gian:</span>
+                    <span className="stat-value">{formatTimeRange()}</span>
+                  </div>
+
+                  <div className="path-distance">
+                    <span className="stat-icon">📏</span>
+                    <span className="stat-label">Độ dài:</span>
+                    <span className="stat-value">
+                      {calculateTotalDistance(petData).toFixed(0)}m
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Main Grid - Map & Alerts */}
+        <div className="grid-layout">
+          {/* Map Section */}
+          <div className="map-section">
+            <div className="section-header">
+              <h3>
+                🗺️ Bản Đồ Theo Dõi
+                {activeSafeZone && (
+                  <span className="safe-zone-status">
+                    (Vùng an toàn: {activeSafeZone.radius}m)
+                  </span>
+                )}
+              </h3>
+              {safeZones.length === 0 && !autoCreateDone && (
+                <div className="zone-creation-status">
+                  ⏳ Đang chờ vị trí đầu tiên để tạo vùng an toàn...
+                </div>
+              )}
+            </div>
+
+            {/* Real-time Map */}
+            <RealTimeMap
+              petData={petData}
+              selectedPet={selectedPetInfo}
+              safeZones={safeZones}
+              activeSafeZoneId={activeSafeZoneId}
+              showPath={showPath}
+              currentRadius={radius} // Truyền radius hiện tại
+            />
+          </div>
+
+          {/* Alerts Section Only */}
+          <div className="alerts-section">
+            <h3>⚠️ Cảnh Báo & Thông Báo</h3>
+            <AlertSystem
+              petData={petData}
+              selectedPet={selectedPetInfo}
+              safeZones={safeZones}
+              currentRadius={radius}
+            />
+          </div>
+        </div>
+
+        {/* Pet List */}
         <div className="pet-list-section">
           <div className="section-header">
             <h3>📋 Danh Sách Pets Của Bạn</h3>
-            <small>Tổng: {pets.length} pet</small>
+            <small>
+              Tổng: {pets.length} pet{pets.length !== 1 ? "s" : ""}
+            </small>
           </div>
 
           <div className="pets-grid">
@@ -563,82 +880,57 @@ function Dashboard() {
               >
                 <div className="pet-info">
                   <h4>{pet.name}</h4>
-                  <p>🐾 {pet.species}</p>
-                  <p>🎂 {pet.age} tuổi</p>
-                  <p>🏷️ {pet.breed}</p>
-                  {selectedPet === pet._id && latestData && (
-                    <div className="pet-status">
-                      <div className="status-dot"></div>
-                      <span>
-                        {latestData.activityType === "resting"
-                          ? "Đang nghỉ"
-                          : latestData.activityType === "walking"
-                          ? "Đang đi"
-                          : latestData.activityType === "running"
-                          ? "Đang chạy"
-                          : "Đang theo dõi"}
-                      </span>
-                    </div>
-                  )}
+                  <div className="pet-details">
+                    <span className="pet-species-badge">{pet.species}</span>
+                    <span className="pet-age">🎂 {pet.age} tuổi</span>
+                    <span className="pet-breed">🏷️ {pet.breed}</span>
+                  </div>
+                </div>
+                <div className="pet-select-indicator">
+                  {selectedPet === pet._id ? "✓" : "→"}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Thông tin vùng an toàn cố định */}
-        {safeZoneCenter && (
-          <div
-            className="card"
-            style={{ marginTop: "1.5rem", background: "#f0f9ff" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h4>🛡️ Vùng An Toàn Cố Định (ESP32)</h4>
-              <button
-                onClick={resetSafeZone}
-                style={{
-                  padding: "0.5rem 1rem",
-                  background: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.375rem",
-                  cursor: "pointer",
-                  fontSize: "0.8rem",
-                }}
-              >
-                🔄 Reset Vùng
-              </button>
-            </div>
-            <p>
-              <strong>🎯 Tâm vùng an toàn:</strong>{" "}
-              {safeZoneCenter[0].toFixed(6)}, {safeZoneCenter[1].toFixed(6)}
-            </p>
-            <p>
-              <strong>📏 Bán kính:</strong> {geofenceRadius} mét
-            </p>
-            <p>
-              <strong>📡 Nguồn dữ liệu:</strong> ESP32 (lần đầu kết nối)
-            </p>
-            <p>
-              <strong>🔒 Trạng thái:</strong>{" "}
-              {initialPositionSet ? "✅ Đã cố định" : "🔄 Đang chờ dữ liệu"}
-            </p>
-            <small style={{ color: "#6b7280" }}>
-              Vùng an toàn được thiết lập từ vị trí đầu tiên nhận được từ ESP32
-              và giữ cố định. ESP32 sẽ nhận được vị trí này để cảnh báo khi pet
-              ra khỏi vùng.
-            </small>
+        {/* Loading Overlay */}
+        {isFetchingData && (
+          <div className="fetching-overlay">
+            <div className="fetching-spinner"></div>
+            <p>Đang cập nhật dữ liệu...</p>
           </div>
         )}
       </div>
     </>
   );
+}
+
+// Helper function to calculate total distance
+function calculateTotalDistance(data) {
+  if (!data || data.length < 2) return 0;
+
+  let totalDistance = 0;
+  const R = 6371000; // Earth's radius in meters
+
+  for (let i = 1; i < data.length; i++) {
+    const prev = data[i];
+    const curr = data[i - 1];
+
+    if (prev.latitude && prev.longitude && curr.latitude && curr.longitude) {
+      const dLat = (curr.latitude - prev.latitude) * (Math.PI / 180);
+      const dLon = (curr.longitude - prev.longitude) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(prev.latitude * (Math.PI / 180)) *
+          Math.cos(curr.latitude * (Math.PI / 180)) *
+          Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      totalDistance += R * c;
+    }
+  }
+
+  return totalDistance;
 }
 
 export default Dashboard;

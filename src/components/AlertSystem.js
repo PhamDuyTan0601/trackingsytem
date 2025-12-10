@@ -5,8 +5,7 @@ import "./AlertSystem.css";
 export default function AlertSystem({
   petData,
   selectedPet,
-  geofenceRadius,
-  safeZoneCenter,
+  safeZones = [], // 🚨 ĐÃ SỬA: nhận array safe zones
 }) {
   const [alerts, setAlerts] = useState([]);
 
@@ -20,7 +19,7 @@ export default function AlertSystem({
         Math.cos((lat2 * Math.PI) / 180) *
         Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c * 1000; // Convert to meters
+    return R * c * 1000;
   };
 
   const checkAlerts = useCallback(
@@ -36,21 +35,47 @@ export default function AlertSystem({
         });
       }
 
-      // Check geofence
-      if (safeZoneCenter && latestData.latitude && latestData.longitude) {
-        const distance = calculateDistance(
-          safeZoneCenter[0],
-          safeZoneCenter[1],
-          latestData.latitude,
-          latestData.longitude
-        );
+      // 🚨 FIXED: Check all safe zones (not just one)
+      if (safeZones.length > 0 && latestData.latitude && latestData.longitude) {
+        let isInAnyZone = false;
+        let nearestZone = null;
+        let minDistance = Infinity;
 
-        if (distance > geofenceRadius) {
+        // Kiểm tra tất cả safe zones
+        safeZones.forEach((zone) => {
+          if (
+            zone.isActive &&
+            zone.center &&
+            zone.center.lat &&
+            zone.center.lng
+          ) {
+            const distance = calculateDistance(
+              zone.center.lat,
+              zone.center.lng,
+              latestData.latitude,
+              latestData.longitude
+            );
+
+            if (distance < minDistance) {
+              minDistance = distance;
+              nearestZone = zone;
+            }
+
+            if (distance <= zone.radius) {
+              isInAnyZone = true;
+            }
+          }
+        });
+
+        // Nếu ra khỏi TẤT CẢ safe zones active
+        if (!isInAnyZone && nearestZone) {
           newAlerts.push({
             type: "geofence",
             message: `🚨 ${
               selectedPet?.name || "Pet"
-            } đã ra khỏi vùng an toàn! (${distance.toFixed(0)}m)`,
+            } đã ra khỏi vùng an toàn "${
+              nearestZone.name
+            }"! (${minDistance.toFixed(0)}m)`,
             level: "danger",
           });
         }
@@ -85,7 +110,7 @@ export default function AlertSystem({
         }
       });
     },
-    [alerts, geofenceRadius, safeZoneCenter, selectedPet]
+    [alerts, safeZones, selectedPet]
   );
 
   useEffect(() => {

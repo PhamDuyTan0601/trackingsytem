@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -12,92 +12,318 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./RealTimeMap.css";
 
-// Fix cho marker icons
+// 🚨 FIX: Import icon images cho Leaflet
+import icon from "leaflet/dist/images/marker-icon.png";
+import icon2x from "leaflet/dist/images/marker-icon-2x.png";
+import shadow from "leaflet/dist/images/marker-shadow.png";
+
+// 🚨 FIX: Cấu hình đúng cho Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+  iconRetinaUrl: icon2x,
+  iconUrl: icon,
+  shadowUrl: shadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
-// Custom icons
+// Custom icons cho các hoạt động
 const activityIcons = {
   resting: new L.Icon({
     iconUrl:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
     shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
   }),
   walking: new L.Icon({
     iconUrl:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
     shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
   }),
   running: new L.Icon({
     iconUrl:
       "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
     shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
     iconSize: [25, 41],
     iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+  }),
+  playing: new L.Icon({
+    iconUrl:
+      "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png",
+    shadowUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
   }),
 };
 
+// Component để cập nhật map view
 function MapUpdater({ center }) {
   const map = useMap();
 
   useEffect(() => {
-    if (center) {
-      map.setView(center, 16);
+    if (center && map) {
+      map.setView(center, 16, { animate: true });
     }
   }, [center, map]);
 
   return null;
 }
 
+// Component hiển thị Safe Zone từ database
+function DatabaseSafeZone({ safeZones = [] }) {
+  // Lưu safe zones vào localStorage
+  useEffect(() => {
+    if (safeZones && safeZones.length > 0) {
+      try {
+        localStorage.setItem("petSafeZones", JSON.stringify(safeZones));
+        console.log(`💾 Saved ${safeZones.length} safe zones to localStorage`);
+      } catch (error) {
+        console.error("❌ Error saving to localStorage:", error);
+      }
+    }
+  }, [safeZones]);
+
+  if (!safeZones || safeZones.length === 0) return null;
+
+  return (
+    <>
+      {safeZones.map((zone, index) => {
+        if (!zone.center || !zone.center.lat || !zone.center.lng) return null;
+
+        const zoneCenter = [zone.center.lat, zone.center.lng];
+        const zoneRadius = zone.radius || 100;
+        const isActive = zone.isActive !== false;
+        const isPrimary = zone.isPrimary === true;
+
+        // Màu sắc dựa trên trạng thái
+        let zoneColor = isPrimary ? "#3B82F6" : "#10B981";
+        let fillColor = isPrimary ? "#3B82F6" : "#10B981";
+
+        if (!isActive) {
+          zoneColor = "#6B7280";
+          fillColor = "#6B7280";
+        }
+
+        return (
+          <React.Fragment key={zone._id || index}>
+            <Circle
+              center={zoneCenter}
+              radius={zoneRadius}
+              pathOptions={{
+                color: zoneColor,
+                fillColor: fillColor,
+                fillOpacity: isActive ? 0.2 : 0.1,
+                weight: isActive ? 3 : 2,
+                dashArray: isPrimary ? "10, 10" : "5, 5",
+                className: "safezone-db",
+              }}
+            />
+            {/* Marker tâm safe zone */}
+            <Marker
+              position={zoneCenter}
+              icon={
+                new L.DivIcon({
+                  html: `<div class="safe-zone-center-marker" style="background: ${zoneColor}">${
+                    isPrimary ? "P" : isActive ? "A" : "I"
+                  }</div>`,
+                  className: "safe-zone-center-marker-container",
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10],
+                })
+              }
+            >
+              <Popup>
+                <div className="safe-zone-popup">
+                  <strong>🏠 Vùng An Toàn</strong>
+                  <br />
+                  <strong>Tên:</strong> {zone.name || "Vùng an toàn"}
+                  <br />
+                  <strong>Bán kính:</strong> {zoneRadius}m
+                  <br />
+                  <strong>Loại:</strong> {isPrimary ? "Chính" : "Thường"}
+                  <br />
+                  <strong>Trạng thái:</strong>{" "}
+                  {isActive ? "🟢 Đang hoạt động" : "⚪ Tạm ngưng"}
+                  <br />
+                  {zone.notes && (
+                    <>
+                      <strong>Ghi chú:</strong> {zone.notes}
+                    </>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+// Component hiển thị vị trí đầu tiên
+function FirstLocationMarker({ firstLocation }) {
+  if (!firstLocation) return null;
+
+  return (
+    <Marker
+      position={[firstLocation.lat, firstLocation.lng]}
+      icon={
+        new L.DivIcon({
+          html: `<div class="first-location-marker">🚩</div>`,
+          className: "first-location-marker-container",
+          iconSize: [24, 24],
+          iconAnchor: [12, 24],
+        })
+      }
+    >
+      <Popup>
+        <div className="first-location-popup">
+          <strong>🚩 Vị trí đầu tiên</strong>
+          <br />
+          <strong>Tọa độ:</strong> {firstLocation.lat.toFixed(6)},{" "}
+          {firstLocation.lng.toFixed(6)}
+          <br />
+          <strong>Thời gian:</strong>{" "}
+          {firstLocation.timestamp
+            ? new Date(firstLocation.timestamp).toLocaleString("vi-VN")
+            : "N/A"}
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
+// Component chính
 export default function RealTimeMap({
   petData,
   selectedPet,
-  geofenceRadius,
-  safeZoneCenter,
-  onGeofenceRadiusChange,
-  onResetSafeZone,
-  initialPositionSet,
+  safeZones = [],
+  activeSafeZoneId = null,
+  showPath = true,
+  firstLocation = null,
+  currentRadius = 100,
 }) {
   const [currentPosition, setCurrentPosition] = useState(null);
   const [path, setPath] = useState([]);
-  const [geofenceEnabled, setGeofenceEnabled] = useState(true);
+  const [pathVisible, setPathVisible] = useState(showPath);
+  const [cachedSafeZones, setCachedSafeZones] = useState([]);
+  const [isMapReady, setIsMapReady] = useState(false);
   const mapRef = useRef();
 
+  // Khôi phục safe zones từ localStorage khi reload
   useEffect(() => {
-    if (
-      petData &&
-      petData.length > 0 &&
-      petData[0].latitude &&
-      petData[0].longitude
-    ) {
+    try {
+      const savedZones = localStorage.getItem("petSafeZones");
+      if (savedZones) {
+        const parsedZones = JSON.parse(savedZones);
+        setCachedSafeZones(parsedZones);
+        console.log(
+          `💾 Restored ${parsedZones.length} safe zones from localStorage`
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error restoring from localStorage:", error);
+    }
+  }, []);
+
+  // Cập nhật path visibility khi prop thay đổi
+  useEffect(() => {
+    setPathVisible(showPath);
+  }, [showPath]);
+
+  // Ưu tiên dùng safe zones từ props (database), nếu không có thì dùng cached
+  const displaySafeZones = safeZones.length > 0 ? safeZones : cachedSafeZones;
+
+  // Xử lý dữ liệu từ ESP32 để tạo đường đi
+  useEffect(() => {
+    if (petData && petData.length > 0) {
       const latestData = petData[0];
-      const newPosition = [latestData.latitude, latestData.longitude];
-      setCurrentPosition(newPosition);
-      setPath((prev) => [...prev.slice(-50), newPosition]);
+      if (latestData.latitude && latestData.longitude) {
+        const newPosition = [latestData.latitude, latestData.longitude];
+        setCurrentPosition(newPosition);
+
+        const newPath = petData
+          .filter((item) => item.latitude && item.longitude)
+          .map((item) => [item.latitude, item.longitude])
+          .reverse();
+
+        const maxPoints = 100;
+        if (newPath.length > maxPoints) {
+          const step = Math.floor(newPath.length / maxPoints);
+          const limitedPath = [];
+          for (let i = 0; i < newPath.length; i += step) {
+            limitedPath.push(newPath[i]);
+          }
+          setPath(limitedPath);
+        } else {
+          setPath(newPath);
+        }
+      }
     }
   }, [petData]);
 
-  const handleGeofenceToggle = () => {
-    setGeofenceEnabled(!geofenceEnabled);
-  };
+  // Đánh dấu map đã sẵn sàng
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsMapReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
-  const handleRadiusChange = (e) => {
-    const newRadius = parseInt(e.target.value);
-    onGeofenceRadiusChange(newRadius);
+  const renderPathMarkers = () => {
+    if (!pathVisible || path.length === 0) return null;
+
+    return path.map((point, index) => {
+      if (index % 5 !== 0 && index !== path.length - 1) return null;
+
+      const timeIndex = petData.length - index - 1;
+      const dataPoint = petData[timeIndex];
+
+      return (
+        <Marker
+          key={`path-${index}`}
+          position={point}
+          icon={
+            new L.DivIcon({
+              html: `<div class="path-point">${index + 1}</div>`,
+              className: "path-point-marker",
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            })
+          }
+        >
+          <Popup>
+            <div className="path-popup">
+              <strong>📍 Điểm #{index + 1}</strong>
+              <br />
+              <strong>Thời gian:</strong>{" "}
+              {dataPoint?.timestamp
+                ? new Date(dataPoint.timestamp).toLocaleTimeString("vi-VN")
+                : "N/A"}
+              <br />
+              {dataPoint?.speed && (
+                <>
+                  <strong>Tốc độ:</strong> {dataPoint.speed.toFixed(1)} m/s
+                </>
+              )}
+            </div>
+          </Popup>
+        </Marker>
+      );
+    });
   };
 
   const getLatestData = () => {
@@ -106,130 +332,65 @@ export default function RealTimeMap({
 
   const latestData = getLatestData();
 
-  if (!currentPosition && !safeZoneCenter) {
+  // Lấy vị trí center để hiển thị
+  let displayPosition = currentPosition;
+
+  // Nếu không có vị trí hiện tại, thử lấy từ safe zones
+  if (!displayPosition && displaySafeZones.length > 0) {
+    const primaryZone =
+      displaySafeZones.find((z) => z.isPrimary) || displaySafeZones[0];
+    if (primaryZone.center) {
+      displayPosition = [primaryZone.center.lat, primaryZone.center.lng];
+    }
+  }
+
+  // Mặc định nếu không có gì
+  if (!displayPosition) {
+    displayPosition = [21.0285, 105.8542]; // Tọa độ mặc định Hà Nội
+  }
+
+  // Nếu vẫn không có dữ liệu và map chưa ready, hiển thị loading
+  if (!isMapReady || (!currentPosition && displaySafeZones.length === 0)) {
     return (
       <div className="map-loading-container">
         <div className="map-loading-content">
           <div className="map-loading-spinner"></div>
-          <p className="map-loading-text">Đang chờ dữ liệu từ ESP32...</p>
+          <p className="map-loading-text">Đang tải bản đồ...</p>
           <small style={{ color: "#6b7280", marginTop: "0.5rem" }}>
-            Đang chờ vị trí đầu tiên để thiết lập vùng an toàn
+            {displaySafeZones.length > 0
+              ? `Đã khôi phục ${displaySafeZones.length} vùng an toàn`
+              : "Đang chờ dữ liệu từ ESP32..."}
           </small>
         </div>
       </div>
     );
   }
 
-  const displayPosition = currentPosition || safeZoneCenter;
-
   return (
-    <div style={{ position: "relative" }}>
-      {/* Geofence Controls */}
-      <div className="geofence-controls">
-        <div className="geofence-controls-title">🛡️ Vùng An Toàn</div>
-
-        {safeZoneCenter && (
-          <div
-            style={{
-              fontSize: "0.75rem",
-              color: "#059669",
-              marginBottom: "10px",
-              padding: "8px",
-              background: "#d1fae5",
-              borderRadius: "4px",
-              border: "1px solid #10b981",
-            }}
-          >
-            <div>
-              <strong>🎯 Tâm đã cố định</strong>
-            </div>
-            <div>
-              📍 {safeZoneCenter[0].toFixed(4)}, {safeZoneCenter[1].toFixed(4)}
-            </div>
-          </div>
-        )}
-
-        {latestData && (
-          <div
-            style={{
-              fontSize: "0.75rem",
-              color: "#6b7280",
-              marginBottom: "10px",
-              padding: "5px",
-              background: "#f3f4f6",
-              borderRadius: "4px",
-            }}
-          >
-            <div>📡 ESP32 Live:</div>
-            <div>⚡ Pin: {latestData.batteryLevel || "N/A"}%</div>
-            <div>🏃 {latestData.activityType || "unknown"}</div>
-            <div>
-              🕐{" "}
-              {latestData.timestamp
-                ? new Date(latestData.timestamp).toLocaleTimeString()
-                : "N/A"}
-            </div>
-          </div>
-        )}
-
-        <div className="geofence-toggle">
-          <input
-            type="checkbox"
-            id="geofence-toggle"
-            className="geofence-checkbox"
-            checked={geofenceEnabled}
-            onChange={handleGeofenceToggle}
-          />
-          <label htmlFor="geofence-toggle" className="geofence-label">
-            Hiển thị vùng an toàn
-          </label>
-        </div>
-
-        {geofenceEnabled && (
-          <div className="geofence-slider-container">
-            <label className="geofence-slider-label">
-              Bán kính:{" "}
-              <span className="geofence-slider-value">{geofenceRadius}m</span>
-            </label>
-            <input
-              type="range"
-              min="50"
-              max="500"
-              step="50"
-              value={geofenceRadius}
-              onChange={handleRadiusChange}
-              className="geofence-slider"
-            />
-            <div
-              style={{ fontSize: "0.7rem", color: "#6b7280", marginTop: "5px" }}
-            >
-              Điều chỉnh phạm vi an toàn
-            </div>
-          </div>
-        )}
-
-        {safeZoneCenter && (
+    <div className="realtime-map-container">
+      {/* Control Panel */}
+      <div className="map-controls">
+        <div className="control-group">
           <button
-            onClick={onResetSafeZone}
-            style={{
-              width: "100%",
-              padding: "0.5rem",
-              marginTop: "10px",
-              background: "#fbbf24",
-              color: "#92400e",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "0.75rem",
-              cursor: "pointer",
-              fontWeight: "500",
-            }}
+            className={`control-btn ${pathVisible ? "active" : ""}`}
+            onClick={() => setPathVisible(!pathVisible)}
+            title="Ẩn/Hiện đường đi"
           >
-            🔄 Đặt lại tâm vùng
+            {pathVisible ? "🗺️ Ẩn đường đi" : "🗺️ Hiện đường đi"}
           </button>
-        )}
+          <div className="safe-zone-info">
+            <small>
+              🏠 Safe Zones: {displaySafeZones.filter((z) => z.isActive).length}{" "}
+              active
+              {cachedSafeZones.length > 0 &&
+                safeZones.length === 0 &&
+                " (from cache)"}
+            </small>
+          </div>
+        </div>
       </div>
 
-      {/* Map Container */}
+      {/* Bản đồ */}
       <div className="map-container">
         <MapContainer
           center={displayPosition}
@@ -237,24 +398,39 @@ export default function RealTimeMap({
           className="leaflet-map"
           ref={mapRef}
           scrollWheelZoom={true}
+          style={{ height: "100%", width: "100%" }}
         >
           <MapUpdater center={displayPosition} />
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Vẽ đường đi từ ESP32 */}
-          {path.length > 1 && (
+          {/* Đường đi từ ESP32 */}
+          {pathVisible && path.length > 1 && (
             <Polyline
               positions={path}
-              color="#3B82F6"
-              weight={4}
-              opacity={0.7}
+              pathOptions={{
+                color: "#3B82F6",
+                weight: 4,
+                opacity: 0.7,
+                dashArray: "5, 10",
+              }}
             />
           )}
 
-          {/* Marker vị trí hiện tại từ ESP32 */}
+          {/* Marker cho từng điểm trên đường đi */}
+          {pathVisible && renderPathMarkers()}
+
+          {/* Hiển thị vị trí đầu tiên */}
+          {firstLocation && (
+            <FirstLocationMarker firstLocation={firstLocation} />
+          )}
+
+          {/* Hiển thị Safe Zones */}
+          <DatabaseSafeZone safeZones={displaySafeZones} />
+
+          {/* Marker vị trí hiện tại ESP32 */}
           {currentPosition && (
             <Marker
               position={currentPosition}
@@ -265,70 +441,18 @@ export default function RealTimeMap({
               <Popup>
                 <div className="map-popup">
                   <strong>
-                    📡 {selectedPet?.name || "Pet"} - Vị trí hiện tại
+                    📍 {selectedPet?.name || "Pet"} - Vị trí hiện tại
                   </strong>
-                  <br />
-                  <strong>📍 Tọa độ:</strong>
-                  <br />
-                  {currentPosition[0].toFixed(6)},{" "}
-                  {currentPosition[1].toFixed(6)}
                   <br />
                   <strong>🏃 Hoạt động:</strong>{" "}
                   {latestData?.activityType || "unknown"}
                   <br />
                   <strong>⚡ Pin:</strong> {latestData?.batteryLevel || "N/A"}%
                   <br />
-                  <small style={{ color: "#3b82f6", fontStyle: "italic" }}>
-                    Dữ liệu thời gian thực từ ESP32
-                  </small>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-
-          {/* Vùng an toàn cố định từ vị trí đầu tiên */}
-          {geofenceEnabled && safeZoneCenter && (
-            <Circle
-              center={safeZoneCenter}
-              radius={geofenceRadius}
-              pathOptions={{
-                color: "#10B981",
-                fillColor: "#10B981",
-                fillOpacity: 0.15,
-                weight: 3,
-                className: "geofence-animated",
-              }}
-            />
-          )}
-
-          {/* Marker tâm vùng an toàn cố định */}
-          {geofenceEnabled && safeZoneCenter && (
-            <Marker
-              position={safeZoneCenter}
-              icon={
-                new L.Icon({
-                  iconUrl:
-                    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png",
-                  shadowUrl:
-                    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-                  iconSize: [25, 41],
-                  iconAnchor: [12, 41],
-                })
-              }
-            >
-              <Popup>
-                <div className="map-popup">
-                  <strong>🎯 Tâm vùng an toàn (Cố định)</strong>
-                  <br />
-                  <strong>📍 Tọa độ:</strong>
-                  <br />
-                  {safeZoneCenter[0].toFixed(6)}, {safeZoneCenter[1].toFixed(6)}
-                  <br />
-                  <strong>📏 Bán kính:</strong> {geofenceRadius}m
-                  <br />
-                  <small style={{ color: "#d97706", fontStyle: "italic" }}>
-                    Thiết lập từ vị trí ESP32 đầu tiên
-                  </small>
+                  <strong>⏰ Thời gian:</strong>{" "}
+                  {latestData?.timestamp
+                    ? new Date(latestData.timestamp).toLocaleTimeString("vi-VN")
+                    : "N/A"}
                 </div>
               </Popup>
             </Marker>
