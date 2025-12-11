@@ -841,7 +841,7 @@ function Dashboard() {
 
           {/* Alerts Section Only */}
           <div className="alerts-section">
-            <h3> Cảnh Báo & Thông Báo</h3>
+            <h3> </h3>
             <AlertSystem
               petData={petData}
               selectedPet={selectedPetInfo}
