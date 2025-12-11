@@ -26,7 +26,7 @@ function Login() {
       const res = await loginUser({ email: emailOrPhone, password });
 
       if (res.data.success) {
-        toast.success("✅ Đăng nhập thành công!");
+        toast.success(" Đăng nhập thành công!");
         navigate("/dashboard");
       } else {
         toast.error(res.data.message || "Đăng nhập thất bại!");
@@ -34,7 +34,7 @@ function Login() {
     } catch (err) {
       const errorMessage =
         err.response?.data?.message ||
-        "❌ Đăng nhập thất bại. Kiểm tra lại thông tin!";
+        " Đăng nhập thất bại. Kiểm tra lại thông tin!";
       toast.error(errorMessage);
       console.error(err);
     } finally {
@@ -47,7 +47,7 @@ function Login() {
       <h2>Đăng nhập Pet Tracker</h2>
       <form onSubmit={handleSubmit}>
         <input
-          placeholder="Email hoặc Số điện thoại"
+          placeholder="Email "
           type="text"
           value={emailOrPhone}
           onChange={(e) => setEmailOrPhone(e.target.value)}

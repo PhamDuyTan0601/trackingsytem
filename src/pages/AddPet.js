@@ -20,10 +20,10 @@ function AddPet() {
 
     try {
       await addPet(form);
-      alert("✅ Pet added successfully!");
+      alert("Pet added successfully!");
       navigate("/dashboard");
     } catch (err) {
-      alert("❌ Error adding pet. Please try again.");
+      alert(" Error adding pet. Please try again.");
       console.error("Error:", err);
     } finally {
       setLoading(false);

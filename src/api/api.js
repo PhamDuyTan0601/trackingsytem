@@ -1,18 +1,16 @@
 import axios from "axios";
 
-// ===============================
-// 🌐 CONFIG
-// ===============================
+// CONFIG
 const API_URL =
   process.env.REACT_APP_API_URL || "https://pettracking2.onrender.com";
 
 // ===============================
-// 🛠️ AUTH HEADER HELPER
+//  AUTH HEADER HELPER
 // ===============================
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
   if (!token) {
-    console.warn("⚠️ No authentication token found!");
+    console.warn(" No authentication token found!");
     return {};
   }
   return {
@@ -22,11 +20,9 @@ const getAuthHeader = () => {
   };
 };
 
-// ===============================
-// 🧮 UTILITY FUNCTIONS (ĐẶT Ở ĐẦU FILE)
-// ===============================
+// UTILITY FUNCTIONS (ĐẶT Ở ĐẦU FILE)
 
-// 🚨 THÊM HÀM NÀY TRƯỚC KHI ĐƯỢC SỬ DỤNG
+// THÊM HÀM NÀY TRƯỚC KHI ĐƯỢC SỬ DỤNG
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371000; // Earth's radius in meters
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -46,7 +42,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 // ===============================
-// 🧑‍💼 USER APIs
+//  USER APIs
 // ===============================
 
 export const registerUser = (userData) =>
@@ -77,7 +73,7 @@ export const updateUserProfile = async (userData) =>
   axios.put(`${API_URL}/api/users/profile`, userData, getAuthHeader());
 
 // ===============================
-// 🐾 PET APIs
+//  PET APIs
 // ===============================
 
 export const getPetsByUser = async () =>
@@ -93,7 +89,7 @@ export const deletePet = async (petId) =>
   axios.delete(`${API_URL}/api/pets/${petId}`, getAuthHeader());
 
 // ===============================
-// 🛡️ SAFE ZONE APIs
+//  SAFE ZONE APIs
 // ===============================
 
 export const getSafeZones = async (petId) =>
@@ -127,7 +123,7 @@ export const deleteSafeZone = async (petId, zoneId) =>
   );
 
 // ===============================
-// 📈 PET DATA APIs
+// PET DATA APIs
 // ===============================
 
 export const getLatestPetData = async (petId) =>
@@ -143,7 +139,7 @@ export const getPetDataInRange = async (petId, startDate, endDate) =>
   );
 
 // ===============================
-// 📱 DEVICE APIs
+//  DEVICE APIs
 // ===============================
 
 export const registerDevice = async (deviceId, petId) =>
@@ -165,9 +161,9 @@ export const getDeviceConfig = async (deviceId) =>
 export const testDeviceConfig = async (deviceId) => {
   try {
     const response = await getDeviceConfig(deviceId);
-    console.log("✅ Device Config Response:", response.data);
+    console.log(" Device Config Response:", response.data);
     if (response.data.safeZones) {
-      console.log(`📦 Safe Zones received: ${response.data.safeZones.length}`);
+      console.log(` Safe Zones received: ${response.data.safeZones.length}`);
       response.data.safeZones.forEach((zone, index) => {
         console.log(`   Zone ${index + 1}: ${zone.name} (${zone.radius}m)`);
       });
@@ -175,7 +171,7 @@ export const testDeviceConfig = async (deviceId) => {
     return response;
   } catch (error) {
     console.error(
-      "❌ Device Config Error:",
+      " Device Config Error:",
       error.response?.data || error.message
     );
     throw error;
@@ -185,11 +181,9 @@ export const testDeviceConfig = async (deviceId) => {
 export const triggerDeviceConfig = async (deviceId) =>
   axios.post(`${API_URL}/api/devices/trigger-config/${deviceId}`);
 
-// ===============================
-// 🛠️ EXPORTED UTILITY FUNCTIONS
-// ===============================
+//  EXPORTED UTILITY FUNCTIONS
 
-// 🚨 EXPORT HÀM calculateDistance
+//  EXPORT HÀM calculateDistance
 export { calculateDistance };
 
 // Kiểm tra xem điểm có nằm trong bất kỳ safe zone nào không
@@ -249,11 +243,11 @@ export const forceConfigUpdate = async (petId) => {
     );
 
     if (device) {
-      console.log(`🔧 Force updating config for device: ${device.deviceId}`);
+      console.log(` Force updating config for device: ${device.deviceId}`);
       return await triggerDeviceConfig(device.deviceId);
     }
   } catch (error) {
-    console.error("❌ Force config update error:", error);
+    console.error(" Force config update error:", error);
   }
 };
 
@@ -320,7 +314,7 @@ export const debugAPIEndpoints = () => {
   console.log("Safe Zones:", `${API_URL}/api/pets/{petId}/safe-zones`);
   console.log(
     "Auth Token:",
-    localStorage.getItem("token") ? "✅ Present" : "❌ Missing"
+    localStorage.getItem("token") ? "Present" : "Missing"
   );
 
   const deviceId = prompt("Enter deviceId for config test:");

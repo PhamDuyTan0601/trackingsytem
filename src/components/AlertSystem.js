@@ -5,7 +5,7 @@ import "./AlertSystem.css";
 export default function AlertSystem({
   petData,
   selectedPet,
-  safeZones = [], // 🚨 ĐÃ SỬA: nhận array safe zones
+  safeZones = [], // ĐÃ SỬA: nhận array safe zones
 }) {
   const [alerts, setAlerts] = useState([]);
 
@@ -27,13 +27,6 @@ export default function AlertSystem({
       const newAlerts = [];
 
       // Check battery
-      if (latestData.batteryLevel < 20) {
-        newAlerts.push({
-          type: "battery",
-          message: `🔋 Pin thấp: ${latestData.batteryLevel}%`,
-          level: "warning",
-        });
-      }
 
       // 🚨 FIXED: Check all safe zones (not just one)
       if (safeZones.length > 0 && latestData.latitude && latestData.longitude) {
@@ -71,9 +64,7 @@ export default function AlertSystem({
         if (!isInAnyZone && nearestZone) {
           newAlerts.push({
             type: "geofence",
-            message: `🚨 ${
-              selectedPet?.name || "Pet"
-            } đã ra khỏi vùng an toàn "${
+            message: ` ${selectedPet?.name || "Pet"} đã ra khỏi vùng an toàn "${
               nearestZone.name
             }"! (${minDistance.toFixed(0)}m)`,
             level: "danger",
@@ -85,7 +76,7 @@ export default function AlertSystem({
       if (latestData.activityType === "running") {
         newAlerts.push({
           type: "activity",
-          message: `🏃 ${selectedPet?.name || "Pet"} đang chạy nhanh!`,
+          message: `Đang chạy nhanh!`,
           level: "info",
         });
       }
@@ -125,11 +116,11 @@ export default function AlertSystem({
 
   return (
     <div className="alert-system-container">
-      <h2 className="alert-system-title">⚠️ Cảnh Báo & Thông Báo</h2>
+      <h2 className="alert-system-title"> Cảnh Báo & Thông Báo</h2>
 
       {alerts.length === 0 ? (
         <div className="alert-empty-state">
-          <div className="alert-empty-icon">✅</div>
+          <div className="alert-empty-icon"></div>
           <p>Không có cảnh báo nào</p>
           <p className="alert-empty-subtitle">Mọi thứ đều ổn định</p>
         </div>

@@ -30,27 +30,23 @@ export default function DashboardStats({ petData, selectedPet }) {
       resting: {
         className: "resting",
         label: "Nghỉ ngơi",
-        icon: "😴",
+        icon: "",
       },
       walking: {
         className: "walking",
         label: "Đang đi",
-        icon: "🚶",
       },
       running: {
         className: "running",
         label: "Đang chạy",
-        icon: "🏃",
       },
       playing: {
         className: "playing",
         label: "Đang chơi",
-        icon: "🎾",
       },
       unknown: {
         className: "unknown",
         label: "Không xác định",
-        icon: "❓",
       },
     };
 

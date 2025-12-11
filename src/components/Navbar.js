@@ -30,10 +30,8 @@ function Navbar() {
       <div className="navbar-right">
         {user.name && (
           <div className="user-info">
-            <span className="navbar-greeting">👋 Xin chào, {user.name}</span>
-            {user.phone && (
-              <span className="navbar-phone">📞 {user.phone}</span>
-            )}
+            <span className="navbar-greeting"> , {user.name}</span>
+            {user.phone && <span className="navbar-phone"> {user.phone}</span>}
           </div>
         )}
         {token && (

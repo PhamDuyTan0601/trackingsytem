@@ -49,14 +49,14 @@ function Register() {
     try {
       const res = await registerUser({ name, email, phone, password });
       if (res.data.success) {
-        toast.success("✅ Tạo tài khoản thành công!");
+        toast.success("Tạo tài khoản thành công!");
         navigate("/login");
       } else {
         toast.error(res.data.message || "Đăng ký thất bại!");
       }
     } catch (err) {
       const errorMessage =
-        err.response?.data?.message || "❌ Đăng ký thất bại. Vui lòng thử lại.";
+        err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại.";
       toast.error(errorMessage);
       console.error(err);
     } finally {

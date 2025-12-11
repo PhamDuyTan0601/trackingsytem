@@ -32,11 +32,11 @@ function Dashboard() {
   const [isUpdatingRadius, setIsUpdatingRadius] = useState(false);
   const [isCleaningOldZones, setIsCleaningOldZones] = useState(false);
 
-  // 🚨 THÊM: State cho offline mode
+  //  State cho offline mode
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [usingCachedData, setUsingCachedData] = useState(false);
 
-  // 🚨 THÊM: Khôi phục trạng thái từ localStorage khi component mount
+  //  Khôi phục trạng thái từ localStorage khi component mount
   useEffect(() => {
     // Kiểm tra trạng thái mạng
     const handleOnline = () => setIsOnline(true);
@@ -48,7 +48,7 @@ function Dashboard() {
     // Khôi phục selectedPet từ localStorage
     const savedSelectedPetId = localStorage.getItem("selectedPetId");
     if (savedSelectedPetId) {
-      console.log(`💾 Khôi phục pet đã chọn từ cache: ${savedSelectedPetId}`);
+      console.log(`Khôi phục pet đã chọn từ cache: ${savedSelectedPetId}`);
     }
 
     // Khôi phục radius từ localStorage
@@ -69,7 +69,7 @@ function Dashboard() {
     };
   }, []);
 
-  // 🚨 THÊM: Lưu trạng thái vào localStorage khi thay đổi
+  //  Lưu trạng thái vào localStorage khi thay đổi
   useEffect(() => {
     if (selectedPet) {
       localStorage.setItem("selectedPetId", selectedPet);
@@ -128,7 +128,7 @@ function Dashboard() {
     if (selectedPet) {
       const interval = setInterval(() => {
         if (!isFetchingData && isOnline) {
-          // 🚨 Chỉ refresh khi online
+          //  Chỉ refresh khi online
           fetchPetData(selectedPet);
         }
       }, 30000);
@@ -142,10 +142,10 @@ function Dashboard() {
 
   const fetchPets = async () => {
     try {
-      // 🚨 THÊM: Thử load từ cache trước
+      //  THÊM: Thử load từ cache trước
       const cachedPets = localStorage.getItem("cachedPets");
       if (cachedPets && !isOnline) {
-        console.log("📦 Sử dụng dữ liệu pets từ cache (offline mode)");
+        console.log("Sử dụng dữ liệu pets từ cache (offline mode)");
         const userPets = JSON.parse(cachedPets);
         setPets(userPets);
 
@@ -166,7 +166,7 @@ function Dashboard() {
       const userPets = res.data.pets || [];
       setPets(userPets);
 
-      // 🚨 THÊM: Lưu vào cache
+      //  THÊM: Lưu vào cache
       localStorage.setItem("cachedPets", JSON.stringify(userPets));
 
       if (userPets.length > 0) {
@@ -182,10 +182,10 @@ function Dashboard() {
     } catch (error) {
       console.error("Error fetching pets:", error);
 
-      // 🚨 THÊM: Thử load từ cache nếu API fail
+      //  THÊM: Thử load từ cache nếu API fail
       const cachedPets = localStorage.getItem("cachedPets");
       if (cachedPets) {
-        console.log("⚠️ API failed, using cached pets");
+        console.log("API failed, using cached pets");
         const userPets = JSON.parse(cachedPets);
         setPets(userPets);
 
@@ -208,9 +208,9 @@ function Dashboard() {
   const fetchPetData = async (petId, forceRefresh = false) => {
     if (isFetchingData && !forceRefresh) return;
 
-    // 🚨 THÊM: Nếu offline, load từ cache
+    //  THÊM: Nếu offline, load từ cache
     if (!isOnline && !forceRefresh) {
-      console.log("📦 Offline mode - loading pet data from cache");
+      console.log(" Offline mode - loading pet data from cache");
       const cachedPetData = localStorage.getItem(`cachedPetData_${petId}`);
       if (cachedPetData) {
         const data = JSON.parse(cachedPetData);
@@ -220,7 +220,7 @@ function Dashboard() {
         setPetData(sortedData);
         updateTimeRange(sortedData);
         setUsingCachedData(true);
-        toast.info("📦 Đang sử dụng dữ liệu cached (offline mode)");
+        toast.info(" Đang sử dụng dữ liệu cached (offline mode)");
       }
       return;
     }
@@ -237,7 +237,7 @@ function Dashboard() {
 
       setPetData(sortedData);
 
-      // 🚨 THÊM: Lưu vào cache
+      //  THÊM: Lưu vào cache
       localStorage.setItem(
         `cachedPetData_${petId}`,
         JSON.stringify(sortedData)
@@ -247,16 +247,16 @@ function Dashboard() {
       updateTimeRange(sortedData);
 
       if (forceRefresh) {
-        toast.info(`🔄 Đã cập nhật ${sortedData.length} điểm dữ liệu`);
+        toast.info(` Đã cập nhật ${sortedData.length} điểm dữ liệu`);
       }
       setUsingCachedData(false);
     } catch (error) {
       console.error("Error fetching pet data:", error);
 
-      // 🚨 THÊM: Thử load từ cache nếu API fail
+      //  THÊM: Thử load từ cache nếu API fail
       const cachedPetData = localStorage.getItem(`cachedPetData_${petId}`);
       if (cachedPetData) {
-        console.log("⚠️ API failed, using cached pet data");
+        console.log(" API failed, using cached pet data");
         const data = JSON.parse(cachedPetData);
         const sortedData = data.sort(
           (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
@@ -264,7 +264,7 @@ function Dashboard() {
         setPetData(sortedData);
         updateTimeRange(sortedData);
         setUsingCachedData(true);
-        toast.warning("⚠️ Đang sử dụng dữ liệu cũ (không thể kết nối server)");
+        toast.warning(" Đang sử dụng dữ liệu cũ (không thể kết nối server)");
       } else {
         toast.error("Không thể tải dữ liệu vị trí!");
       }
@@ -273,7 +273,7 @@ function Dashboard() {
     }
   };
 
-  // 🚨 THÊM: Helper function để update time range
+  //  THÊM: Helper function để update time range
   const updateTimeRange = (sortedData) => {
     if (sortedData.length > 0) {
       setDataTimeRange({
@@ -285,10 +285,10 @@ function Dashboard() {
 
   const fetchSafeZones = async (petId) => {
     try {
-      // 🚨 THÊM: Thử load từ cache trước
+      //  THÊM: Thử load từ cache trước
       const cachedSafeZones = localStorage.getItem(`cachedSafeZones_${petId}`);
       if (cachedSafeZones && !isOnline) {
-        console.log("📦 Offline mode - loading safe zones from cache");
+        console.log(" Offline mode - loading safe zones from cache");
         const zones = JSON.parse(cachedSafeZones);
         processSafeZones(zones);
         setUsingCachedData(true);
@@ -299,7 +299,7 @@ function Dashboard() {
       if (res.data.success) {
         const zones = res.data.safeZones || [];
 
-        // 🚨 THÊM: Lưu vào cache
+        //  THÊM: Lưu vào cache
         localStorage.setItem(`cachedSafeZones_${petId}`, JSON.stringify(zones));
 
         processSafeZones(zones);
@@ -308,7 +308,7 @@ function Dashboard() {
     } catch (error) {
       console.error("Error fetching safe zones:", error);
 
-      // 🚨 THÊM: Thử load từ cache nếu API fail
+      //  THÊM: Thử load từ cache nếu API fail
       const cachedSafeZones = localStorage.getItem(`cachedSafeZones_${petId}`);
       if (cachedSafeZones) {
         console.log("⚠️ API failed, using cached safe zones");
@@ -321,7 +321,7 @@ function Dashboard() {
     }
   };
 
-  // 🚨 THÊM: Helper function để xử lý safe zones
+  //  THÊM: Helper function để xử lý safe zones
   const processSafeZones = (zones) => {
     // Chỉ lấy safe zone mới nhất (tự động tạo)
     const autoCreatedZones = zones.filter((zone) => zone.autoCreated);
@@ -368,17 +368,17 @@ function Dashboard() {
       const currentZone = safeZones.find((zone) => zone._id === currentZoneId);
       if (currentZone) {
         setSafeZones([currentZone]);
-        // 🚨 THÊM: Cập nhật cache
+        //  THÊM: Cập nhật cache
         localStorage.setItem(
           `cachedSafeZones_${selectedPet}`,
           JSON.stringify([currentZone])
         );
       }
 
-      toast.success(`🧹 Đã dọn dẹp ${zonesToDelete.length} vùng an toàn cũ`);
+      toast.success(`Đã dọn dẹp ${zonesToDelete.length} vùng an toàn cũ`);
     } catch (error) {
       console.error("Error cleaning up old safe zones:", error);
-      toast.error("❌ Không thể dọn dẹp vùng an toàn cũ");
+      toast.error("Không thể dọn dẹp vùng an toàn cũ");
     } finally {
       setIsCleaningOldZones(false);
     }
@@ -387,7 +387,7 @@ function Dashboard() {
   // Tự động tạo safe zone từ ESP32
   const createAutoSafeZone = async (lat, lng) => {
     try {
-      console.log("🚀 Tự động tạo safe zone từ ESP32:", { lat, lng });
+      console.log(" Tự động tạo safe zone từ ESP32:", { lat, lng });
 
       const petName = pets.find((p) => p._id === selectedPet)?.name || "Pet";
 
@@ -412,23 +412,23 @@ function Dashboard() {
       const data = await response.json();
 
       if (data.success && data.safeZone) {
-        console.log("✅ Đã tự động tạo safe zone:", data.safeZone);
+        console.log(" Đã tự động tạo safe zone:", data.safeZone);
         setSafeZones([data.safeZone]);
         setAutoCreateDone(true);
         setActiveSafeZoneId(data.safeZone._id);
         setRadius(data.safeZone.radius || 100);
 
-        // 🚨 THÊM: Lưu vào cache
+        //  THÊM: Lưu vào cache
         localStorage.setItem(
           `cachedSafeZones_${selectedPet}`,
           JSON.stringify([data.safeZone])
         );
 
-        toast.success(`✅ Đã tạo vùng an toàn cho ${petName}`);
+        toast.success(`Đã tạo vùng an toàn cho ${petName}`);
       }
     } catch (error) {
-      console.error("❌ Lỗi khi tự động tạo safe zone:", error);
-      toast.error("❌ Không thể tạo vùng an toàn (offline mode)");
+      console.error(" Lỗi khi tự động tạo safe zone:", error);
+      toast.error(" Không thể tạo vùng an toàn (offline mode)");
     }
   };
 
@@ -449,17 +449,17 @@ function Dashboard() {
       );
       setSafeZones(updatedZones);
 
-      // 🚨 THÊM: Cập nhật cache
+      //  THÊM: Cập nhật cache
       localStorage.setItem(
         `cachedSafeZones_${selectedPet}`,
         JSON.stringify(updatedZones)
       );
 
-      toast.success(`✅ Đã cập nhật bán kính: ${radius}m`);
+      toast.success(`Đã cập nhật bán kính: ${radius}m`);
     } catch (error) {
       console.error("Error updating radius:", error);
 
-      // 🚨 THÊM: Vẫn update local state ngay cả khi offline
+      //  THÊM: Vẫn update local state ngay cả khi offline
       const updatedZones = safeZones.map((zone) =>
         zone._id === activeSafeZoneId ? { ...zone, radius } : zone
       );
@@ -470,7 +470,7 @@ function Dashboard() {
       );
 
       toast.warning(
-        `⚠️ Đã cập nhật bán kính local (${radius}m) - sẽ sync khi online`
+        ` Đã cập nhật bán kính local (${radius}m) - sẽ sync khi online`
       );
     } finally {
       setIsUpdatingRadius(false);
@@ -495,7 +495,7 @@ function Dashboard() {
     if (window.confirm("Bạn có chắc muốn xóa dữ liệu đường đi hiển thị?")) {
       setPetData([]);
       localStorage.removeItem(`cachedPetData_${selectedPet}`);
-      toast.info("🗑️ Đã xóa dữ liệu đường đi hiển thị");
+      toast.info(" Đã xóa dữ liệu đường đi hiển thị");
     }
   };
 
@@ -526,7 +526,7 @@ function Dashboard() {
     return safeZones.find((zone) => zone._id === activeSafeZoneId);
   };
 
-  // 🚨 THÊM: Xóa cache
+  //  THÊM: Xóa cache
   const clearAllCache = () => {
     if (window.confirm("Bạn có chắc muốn xóa tất cả dữ liệu cached?")) {
       // Xóa tất cả cache liên quan đến pets
@@ -540,6 +540,22 @@ function Dashboard() {
       });
 
       toast.success("🧹 Đã xóa tất cả dữ liệu cached");
+    }
+  };
+
+  // Helper functions cho activity status
+  const getActivityLabel = (activityType) => {
+    switch (activityType) {
+      case "walking":
+        return "ĐANG ĐI";
+      case "running":
+        return "ĐANG CHẠY";
+      case "resting":
+        return "ĐANG NGHỈ NGƠI";
+      case "playing":
+        return "ĐANG CHƠI";
+      default:
+        return "KHÔNG XÁC ĐỊNH";
     }
   };
 
@@ -566,7 +582,7 @@ function Dashboard() {
             <div className="no-pets-icon">🐾</div>
             <p>Bạn chưa có pet nào!</p>
             <button onClick={() => (window.location.href = "/add-pet")}>
-              ➕ Thêm Pet Mới
+              Thêm Pet Mới
             </button>
           </div>
         </div>
@@ -585,7 +601,7 @@ function Dashboard() {
         {/* Header */}
         <div className="dashboard-header">
           <div className="header-left">
-            <h2>🐕 Dashboard Theo Dõi Pet</h2>
+            <h2>Dashboard Theo Dõi Pet</h2>
             {selectedPetInfo && (
               <div className="current-pet-info">
                 <span className="pet-name">{selectedPetInfo.name}</span>
@@ -595,22 +611,9 @@ function Dashboard() {
           </div>
 
           <div className="header-right">
-            {latestData && (
-              <div className="current-location">
-                <span className="location-icon">📍</span>
-                <span className="coordinates">
-                  {latestData.latitude?.toFixed(6)},{" "}
-                  {latestData.longitude?.toFixed(6)}
-                </span>
-                <span className="location-time">
-                  {latestData.timestamp
-                    ? new Date(latestData.timestamp).toLocaleTimeString("vi-VN")
-                    : "N/A"}
-                </span>
-              </div>
-            )}
+            {latestData && <div className="current-location"></div>}
 
-            {/* 🚨 THÊM: Hiển thị trạng thái mạng */}
+            {/*  THÊM: Hiển thị trạng thái mạng */}
             <div className="network-status">
               <div
                 className={`status-indicator ${
@@ -626,9 +629,7 @@ function Dashboard() {
                 <span
                   className="cache-indicator"
                   title="Đang sử dụng dữ liệu cached"
-                >
-                  📦
-                </span>
+                ></span>
               )}
             </div>
           </div>
@@ -645,14 +646,14 @@ function Dashboard() {
                 disabled={isFetchingData || !isOnline}
                 title={!isOnline ? "Không thể refresh khi offline" : ""}
               >
-                {isFetchingData ? "🔄 Đang tải..." : "🔄 Làm mới"}
+                {isFetchingData ? " Đang tải..." : " Làm mới"}
               </button>
               <button
                 className="cache-clear-btn"
                 onClick={clearAllCache}
                 title="Xóa dữ liệu cached"
               >
-                🧹 Clear Cache
+                Clear Cache
               </button>
             </div>
           </div>
@@ -673,7 +674,7 @@ function Dashboard() {
         {safeZones.length > 0 && (
           <div className="safe-zone-controls-panel">
             <div className="safe-zone-header">
-              <h3>🎯 Điều Chỉnh Vùng An Toàn</h3>
+              <h3> Điều Chỉnh Vùng An Toàn</h3>
               <div className="active-zone-info">
                 <span className="zone-name">
                   {activeSafeZone?.name || "Vùng an toàn tự động"}
@@ -697,7 +698,7 @@ function Dashboard() {
                       className="offline-badge"
                       title="Thay đổi sẽ được lưu local"
                     >
-                      📦 Local
+                      Local
                     </span>
                   )}
                 </div>
@@ -743,7 +744,7 @@ function Dashboard() {
                   onClick={updateRadius}
                   disabled={isUpdatingRadius || !activeSafeZoneId}
                 >
-                  {isUpdatingRadius ? "⏳ Đang cập nhật..." : "💾 Cập nhật"}
+                  {isUpdatingRadius ? " Đang cập nhật..." : " Cập nhật"}
                 </button>
                 <button
                   className="reset-radius-btn"
@@ -751,13 +752,13 @@ function Dashboard() {
                   title="Reset về giá trị ban đầu"
                   disabled={!activeSafeZoneId}
                 >
-                  🔄 Reset
+                  Reset
                 </button>
 
                 {/* Nút dọn dẹp safe zones cũ */}
                 {isCleaningOldZones && (
                   <button className="cleaning-btn" disabled>
-                    🧹 Đang dọn dẹp...
+                    Đang dọn dẹp...
                   </button>
                 )}
               </div>
@@ -765,54 +766,44 @@ function Dashboard() {
           </div>
         )}
 
-        {/* Map Controls */}
-        {petData.length > 0 && (
-          <div className="map-controls-panel">
-            <div className="control-buttons">
-              <button
-                className={`path-toggle-btn ${showPath ? "active" : ""}`}
-                onClick={() => setShowPath(!showPath)}
-              >
-                {showPath ? "🗺️ Ẩn đường đi" : "🗺️ Hiện đường đi"}
-              </button>
-              <button
-                className="clear-path-btn"
-                onClick={handleClearPath}
-                title="Xóa dữ liệu đường đi hiển thị"
-              >
-                🗑️ Xóa đường đi
-              </button>
+        {/*  PHẦN MỚI: TRẠNG THÁI HOẠT ĐỘNG CỦA PET - ĐÃ FIX */}
+        {petData.length > 0 && latestData && (
+          <div className="activity-status-panel">
+            <div className="activity-status-header">
+              <h4> Trạng Thái Hoạt Động Của Pet</h4>
             </div>
 
-            <div className="path-stats-summary">
-              <div className="data-count">
-                <span className="stat-icon">📍</span>
-                <span className="stat-label">Số điểm:</span>
-                <span className="stat-value">{petData.length}</span>
-                {usingCachedData && (
-                  <span className="cache-badge" title="Dữ liệu từ cache">
-                    📦
+            <div
+              className={`activity-status ${
+                latestData.activityType || "unknown"
+              }`}
+            >
+              <div className="activity-details">
+                <div className="activity-type">
+                  <strong>Hoạt động:</strong>
+                  <span className="activity-label">
+                    {getActivityLabel(latestData.activityType)}
                   </span>
-                )}
-              </div>
-
-              {petData.length > 0 && (
-                <>
-                  <div className="time-range">
-                    <span className="stat-icon">⏱️</span>
-                    <span className="stat-label">Khoảng thời gian:</span>
-                    <span className="stat-value">{formatTimeRange()}</span>
-                  </div>
-
-                  <div className="path-distance">
-                    <span className="stat-icon">📏</span>
-                    <span className="stat-label">Độ dài:</span>
+                </div>
+                <div className="activity-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">Tốc độ:</span>
                     <span className="stat-value">
-                      {calculateTotalDistance(petData).toFixed(0)}m
+                      {latestData.speed?.toFixed(2) || "0.00"} m/s
                     </span>
                   </div>
-                </>
-              )}
+                  <div className="stat-item">
+                    <span className="stat-label">Cập nhật:</span>
+                    <span className="stat-value">
+                      {latestData.timestamp
+                        ? new Date(latestData.timestamp).toLocaleTimeString(
+                            "vi-VN"
+                          )
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -823,7 +814,7 @@ function Dashboard() {
           <div className="map-section">
             <div className="section-header">
               <h3>
-                🗺️ Bản Đồ Theo Dõi
+                Bản Đồ Theo Dõi
                 {activeSafeZone && (
                   <span className="safe-zone-status">
                     (Vùng an toàn: {activeSafeZone.radius}m)
@@ -832,7 +823,7 @@ function Dashboard() {
               </h3>
               {safeZones.length === 0 && !autoCreateDone && (
                 <div className="zone-creation-status">
-                  ⏳ Đang chờ vị trí đầu tiên để tạo vùng an toàn...
+                  Đang chờ vị trí đầu tiên để tạo vùng an toàn...
                 </div>
               )}
             </div>
@@ -850,7 +841,7 @@ function Dashboard() {
 
           {/* Alerts Section Only */}
           <div className="alerts-section">
-            <h3>⚠️ Cảnh Báo & Thông Báo</h3>
+            <h3> Cảnh Báo & Thông Báo</h3>
             <AlertSystem
               petData={petData}
               selectedPet={selectedPetInfo}
@@ -863,7 +854,7 @@ function Dashboard() {
         {/* Pet List */}
         <div className="pet-list-section">
           <div className="section-header">
-            <h3>📋 Danh Sách Pets Của Bạn</h3>
+            <h3> Danh Sách Pets Của Bạn</h3>
             <small>
               Tổng: {pets.length} pet{pets.length !== 1 ? "s" : ""}
             </small>
@@ -882,8 +873,8 @@ function Dashboard() {
                   <h4>{pet.name}</h4>
                   <div className="pet-details">
                     <span className="pet-species-badge">{pet.species}</span>
-                    <span className="pet-age">🎂 {pet.age} tuổi</span>
-                    <span className="pet-breed">🏷️ {pet.breed}</span>
+                    <span className="pet-age"> {pet.age} tuổi</span>
+                    <span className="pet-breed"> {pet.breed}</span>
                   </div>
                 </div>
                 <div className="pet-select-indicator">

@@ -12,12 +12,12 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./RealTimeMap.css";
 
-// 🚨 FIX: Import icon images cho Leaflet
+//  Import icon images cho Leaflet
 import icon from "leaflet/dist/images/marker-icon.png";
 import icon2x from "leaflet/dist/images/marker-icon-2x.png";
 import shadow from "leaflet/dist/images/marker-shadow.png";
 
-// 🚨 FIX: Cấu hình đúng cho Leaflet icons
+// Cấu hình đúng cho Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: icon2x,
@@ -89,9 +89,9 @@ function DatabaseSafeZone({ safeZones = [] }) {
     if (safeZones && safeZones.length > 0) {
       try {
         localStorage.setItem("petSafeZones", JSON.stringify(safeZones));
-        console.log(`💾 Saved ${safeZones.length} safe zones to localStorage`);
+        console.log(` Saved ${safeZones.length} safe zones to localStorage`);
       } catch (error) {
-        console.error("❌ Error saving to localStorage:", error);
+        console.error(" Error saving to localStorage:", error);
       }
     }
   }, [safeZones]);
@@ -108,7 +108,6 @@ function DatabaseSafeZone({ safeZones = [] }) {
         const isActive = zone.isActive !== false;
         const isPrimary = zone.isPrimary === true;
 
-        // Màu sắc dựa trên trạng thái
         let zoneColor = isPrimary ? "#3B82F6" : "#10B981";
         let fillColor = isPrimary ? "#3B82F6" : "#10B981";
 
@@ -147,7 +146,7 @@ function DatabaseSafeZone({ safeZones = [] }) {
             >
               <Popup>
                 <div className="safe-zone-popup">
-                  <strong>🏠 Vùng An Toàn</strong>
+                  <strong> Vùng An Toàn</strong>
                   <br />
                   <strong>Tên:</strong> {zone.name || "Vùng an toàn"}
                   <br />
@@ -156,7 +155,7 @@ function DatabaseSafeZone({ safeZones = [] }) {
                   <strong>Loại:</strong> {isPrimary ? "Chính" : "Thường"}
                   <br />
                   <strong>Trạng thái:</strong>{" "}
-                  {isActive ? "🟢 Đang hoạt động" : "⚪ Tạm ngưng"}
+                  {isActive ? " Đang hoạt động" : " Tạm ngưng"}
                   <br />
                   {zone.notes && (
                     <>
@@ -191,7 +190,7 @@ function FirstLocationMarker({ firstLocation }) {
     >
       <Popup>
         <div className="first-location-popup">
-          <strong>🚩 Vị trí đầu tiên</strong>
+          <strong> Vị trí đầu tiên</strong>
           <br />
           <strong>Tọa độ:</strong> {firstLocation.lat.toFixed(6)},{" "}
           {firstLocation.lng.toFixed(6)}
@@ -231,11 +230,11 @@ export default function RealTimeMap({
         const parsedZones = JSON.parse(savedZones);
         setCachedSafeZones(parsedZones);
         console.log(
-          `💾 Restored ${parsedZones.length} safe zones from localStorage`
+          ` Restored ${parsedZones.length} safe zones from localStorage`
         );
       }
     } catch (error) {
-      console.error("❌ Error restoring from localStorage:", error);
+      console.error(" Error restoring from localStorage:", error);
     }
   }, []);
 
@@ -307,7 +306,7 @@ export default function RealTimeMap({
         >
           <Popup>
             <div className="path-popup">
-              <strong>📍 Điểm #{index + 1}</strong>
+              <strong> Điểm #{index + 1}</strong>
               <br />
               <strong>Thời gian:</strong>{" "}
               {dataPoint?.timestamp
@@ -376,11 +375,11 @@ export default function RealTimeMap({
             onClick={() => setPathVisible(!pathVisible)}
             title="Ẩn/Hiện đường đi"
           >
-            {pathVisible ? "🗺️ Ẩn đường đi" : "🗺️ Hiện đường đi"}
+            {pathVisible ? " Ẩn đường đi" : " Hiện đường đi"}
           </button>
           <div className="safe-zone-info">
             <small>
-              🏠 Safe Zones: {displaySafeZones.filter((z) => z.isActive).length}{" "}
+              Safe Zones: {displaySafeZones.filter((z) => z.isActive).length}{" "}
               active
               {cachedSafeZones.length > 0 &&
                 safeZones.length === 0 &&
@@ -441,15 +440,15 @@ export default function RealTimeMap({
               <Popup>
                 <div className="map-popup">
                   <strong>
-                    📍 {selectedPet?.name || "Pet"} - Vị trí hiện tại
+                    {selectedPet?.name || "Pet"} - Vị trí hiện tại
                   </strong>
                   <br />
-                  <strong>🏃 Hoạt động:</strong>{" "}
+                  <strong> Hoạt động:</strong>{" "}
                   {latestData?.activityType || "unknown"}
                   <br />
-                  <strong>⚡ Pin:</strong> {latestData?.batteryLevel || "N/A"}%
+                  <strong> Pin:</strong> {latestData?.batteryLevel || "N/A"}%
                   <br />
-                  <strong>⏰ Thời gian:</strong>{" "}
+                  <strong> Thời gian:</strong>{" "}
                   {latestData?.timestamp
                     ? new Date(latestData.timestamp).toLocaleTimeString("vi-VN")
                     : "N/A"}

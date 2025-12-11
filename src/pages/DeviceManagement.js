@@ -36,14 +36,14 @@ function DeviceManagement() {
     try {
       await registerDevice(deviceId, selectedPet);
 
-      alert("✅ Đăng ký device thành công!");
+      alert(" Đăng ký device thành công!");
 
       // Reset form
       setDeviceId("");
       setSelectedPet("");
     } catch (error) {
       alert(
-        "❌ Lỗi đăng ký device: " +
+        " Lỗi đăng ký device: " +
           (error.response?.data?.message || "Unknown error")
       );
     } finally {
@@ -79,7 +79,7 @@ function DeviceManagement() {
         )}
 
         <div className="card">
-          <h3>➕ Đăng ký Device Mới</h3>
+          <h3> Đăng ký Device Mới</h3>
           <form onSubmit={handleRegister} className="device-form">
             <div className="form-group">
               <label>Device ID:</label>
@@ -117,12 +117,11 @@ function DeviceManagement() {
 
         {/* Hướng dẫn sử dụng */}
         <div className="card instructions-card">
-          <h3>📖 Hướng Dẫn Sử Dụng</h3>
+          <h3> Hướng Dẫn Sử Dụng</h3>
           <ol>
             <li>
-              <strong>Lấy Device ID từ ESP32:</strong> Device ID thường được
-              hiển thị trên màn hình LCD của ESP32 hoặc trong Serial Monitor
-              (thường bắt đầu bằng "ESP32_").
+              <strong>Lấy Device ID từ ESP32:</strong> Device ID được dán trên
+              sản phẩm (thường bắt đầu bằng "ESP32_").
             </li>
             <li>
               <strong>Chọn Pet:</strong> Chọn pet mà bạn muốn gắn device theo
